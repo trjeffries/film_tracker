@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
 interface Film {
   id: string;
@@ -23,8 +23,6 @@ interface Booking {
 
 type Filter = "all" | "upcoming" | "recent" | "booked";
 type Bookings = Record<string, Booking>;
-
-const defaultUsername = "trjeffries";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object" && !Array.isArray(value);
@@ -161,8 +159,8 @@ function Icon({ name }: { name: "ticket" | "refresh" | "search" | "film" | "arro
 }
 
 function App() {
-  const [username, setUsername] = useState(defaultUsername);
-  const [usernameDraft, setUsernameDraft] = useState(defaultUsername);
+  const [username, setUsername] = useState("");
+  const [usernameDraft, setUsernameDraft] = useState("");
   const [films, setFilms] = useState<Film[]>([]);
   const [bookings, setBookings] = useState<Bookings>({});
   const [filter, setFilter] = useState<Filter>("all");
@@ -171,8 +169,15 @@ function App() {
   const [error, setError] = useState("");
   const [storageError, setStorageError] = useState("");
   const [fetchedAt, setFetchedAt] = useState("");
+  const usernameInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    if (!username) {
+      setBookings({});
+      setStorageError("");
+      return;
+    }
+
     try {
       const saved = localStorage.getItem(getStorageKey(username));
       const parsed: unknown = saved ? JSON.parse(saved) : {};
@@ -194,7 +199,7 @@ function App() {
   }, [storageError]);
 
   useEffect(() => {
-    if (storageError) return;
+    if (storageError || !username) return;
     try {
       localStorage.setItem(getStorageKey(username), JSON.stringify(bookings));
     } catch (cause) {
@@ -246,13 +251,14 @@ function App() {
     }
   }
 
-  useEffect(() => {
-    void syncWatchlist(defaultUsername);
-  }, []);
-
   function handleUsernameSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const cleaned = usernameDraft.trim();
+    if (!cleaned) {
+      setError("");
+      usernameInput.current?.focus();
+      return;
+    }
     if (!/^[A-Za-z0-9_-]{1,30}$/.test(cleaned)) {
       setError("Enter a valid Letterboxd username.");
       return;
@@ -308,13 +314,15 @@ function App() {
               <span className="at-sign">@</span>
               <input
                 id="letterboxd-username"
+                ref={usernameInput}
                 autoComplete="off"
+                placeholder="Enter username"
                 value={usernameDraft}
                 onChange={(event) => setUsernameDraft(event.target.value)}
               />
               <button className="sync-button" type="submit" disabled={loading}>
                 <Icon name="refresh" />
-                {loading ? "Syncing" : "Sync"}
+                {loading ? "Syncing" : username ? "Sync" : "Load watchlist"}
               </button>
             </div>
           </form>
@@ -326,16 +334,18 @@ function App() {
             <span className="market-label">UK</span>
           </div>
         </section>
-        <a
-          className="letterboxd-link"
-          href={`https://letterboxd.com/${encodeURIComponent(username)}/watchlist/`}
-          target="_blank"
-          rel="noreferrer"
-        >
-          <span className="status-dot" />
-          LETTERBOXD WATCHLIST
-          <Icon name="arrow" />
-        </a>
+        {username && (
+          <a
+            className="letterboxd-link"
+            href={`https://letterboxd.com/${encodeURIComponent(username)}/watchlist/`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            <span className="status-dot" />
+            LETTERBOXD WATCHLIST
+            <Icon name="arrow" />
+          </a>
+        )}
       </header>
 
       <section className="intro">
@@ -382,17 +392,25 @@ function App() {
             <span>Finding UK cinema dates on Letterboxd</span>
           </div>
         ) : visibleFilms.length === 0 ? (
-          <div className="empty-state">
+          <div className={username ? "empty-state" : "empty-state is-welcome"}>
             <div className="empty-icon"><Icon name="film" /></div>
-            <h3>{films.length === 0 ? "Your next film night starts here." : "Nothing on this reel."}</h3>
+            <h3>
+              {!username
+                ? "Your next film night starts here."
+                : films.length === 0
+                  ? "No recent releases found."
+                  : "Nothing on this reel."}
+            </h3>
             <p>
-              {films.length === 0
-                ? "Sync a public Letterboxd watchlist to find films opening in UK cinemas."
+              {!username
+                ? "Enter your Letterboxd username above to see upcoming and recently released films."
+                : films.length === 0
+                  ? "We couldn’t find upcoming or recently released UK cinema dates in this watchlist."
                 : search
                   ? "Try another title or clear your search."
                   : "No films match this view right now. Check back after your next sync."}
             </p>
-            {films.length === 0 && (
+            {username && films.length === 0 && (
               <button className="empty-action" type="button" onClick={() => void syncWatchlist(username, true)}>
                 <Icon name="refresh" /> Sync {username}’s watchlist
               </button>

@@ -765,6 +765,12 @@ input:focus-visible {
   text-align: center;
 }
 
+.empty-state.is-welcome {
+  border-style: solid;
+  border-color: rgba(216, 225, 224, 0.1);
+  background: rgba(16, 21, 26, 0.45);
+}
+
 .loading-spinner {
   width: 25px;
   height: 25px;
