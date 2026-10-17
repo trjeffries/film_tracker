@@ -303,6 +303,7 @@ input:focus-visible {
 }
 
 .market-label {
+  display: inline-block;
   margin-left: 3px;
   padding: 5px 6px;
   border: 1px solid rgba(216, 225, 224, 0.13);
@@ -310,6 +311,7 @@ input:focus-visible {
   color: #a4aeaa;
   font-size: 8px;
   letter-spacing: 0.08em;
+  text-decoration: none;
 }
 
 .message {

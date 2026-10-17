@@ -333,11 +333,20 @@ function App() {
             </div>
           </form>
           <div className="sync-meta">
-            <span className={loading ? "sync-indicator is-loading" : "sync-indicator"} />
-            <span>
-              {loading ? "Syncing…" : fetchedAt ? `Synced ${formatSyncTime(fetchedAt)}` : "Ready to sync"}
-            </span>
-            <span className="market-label">UK</span>
+            {fetchedAt && (
+              <>
+                <span className={loading ? "sync-indicator is-loading" : "sync-indicator"} />
+                <span>{loading ? "Syncing…" : `Synced ${formatSyncTime(fetchedAt)}`}</span>
+              </>
+            )}
+            <a
+              className="market-label"
+              href="https://www.imdb.com/calendar/?region=GB"
+              target="_blank"
+              rel="noreferrer"
+            >
+              UK RELEASES
+            </a>
           </div>
         </section>
         {username && (
@@ -347,7 +356,6 @@ function App() {
             target="_blank"
             rel="noreferrer"
           >
-            <span className="status-dot" />
             LETTERBOXD WATCHLIST
             <Icon name="arrow" />
           </a>
@@ -427,6 +435,9 @@ function App() {
             {visibleFilms.map((film, index) => {
               const booking = bookings[film.id]?.booked ?? false;
               const primaryRelease = film.releaseDates[0];
+              const hasTheatricalRelease = film.releaseDates.some(
+                (release) => release.market === primaryRelease?.market && release.type === "theatrical",
+              );
               const dateBadge = primaryRelease ? formatShortDate(primaryRelease.date) : null;
               const dateStampClass = primaryRelease?.market === "us"
                 ? "date-stamp is-neutral"
@@ -476,7 +487,7 @@ function App() {
                           <>
                             {film.releaseDates[0]?.market === "us" && (
                               <span className="release-date is-neutral">
-                                UK release date to be announced{film.year ? ` · ${film.year}` : ""}
+                                UK release date to be announced
                               </span>
                             )}
                             {film.releaseDates.map((release) => (
@@ -491,7 +502,9 @@ function App() {
                                 <strong>
                                   {release.market === "us"
                                     ? "US release"
-                                    : release.type === "previews" ? "Previews" : "Theatrical"}
+                                      : release.type === "previews"
+                                        ? hasTheatricalRelease ? "Previews" : "Limited"
+                                        : "Theatrical"}
                                 </strong>{" "}
                                 {formatDate(release.date)}
                               </span>
