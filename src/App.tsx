@@ -6,7 +6,11 @@ interface Film {
   year: number | null;
   letterboxdUrl: string;
   posterUrl: string | null;
-  releaseDates: Array<{ date: string; type: "previews" | "theatrical" }>;
+  releaseDates: Array<{
+    date: string;
+    type: "previews" | "theatrical";
+    market: "uk" | "us";
+  }>;
   releaseStatus: "upcoming" | "recent";
 }
 
@@ -48,7 +52,8 @@ function isWatchlistResponse(value: unknown): value is WatchlistResponse {
           (release) =>
             isRecord(release) &&
             typeof release.date === "string" &&
-            (release.type === "previews" || release.type === "theatrical"),
+            (release.type === "previews" || release.type === "theatrical") &&
+            (release.market === "uk" || release.market === "us"),
         ),
     )
   );
@@ -315,6 +320,7 @@ function App() {
               <input
                 id="letterboxd-username"
                 ref={usernameInput}
+                autoCapitalize="none"
                 autoComplete="off"
                 placeholder="Enter username"
                 value={usernameDraft}
@@ -422,6 +428,11 @@ function App() {
               const booking = bookings[film.id]?.booked ?? false;
               const primaryRelease = film.releaseDates[0];
               const dateBadge = primaryRelease ? formatShortDate(primaryRelease.date) : null;
+              const dateStampClass = primaryRelease?.market === "us"
+                ? "date-stamp is-neutral"
+                : primaryRelease && primaryRelease.date <= today
+                  ? "date-stamp"
+                  : "date-stamp is-upcoming";
               return (
                 <article className="film-card" key={film.id} style={{ animationDelay: `${index * 35}ms` }}>
                   <div className="poster-wrap">
@@ -434,7 +445,7 @@ function App() {
                       </div>
                     )}
                     <div className="poster-shade" />
-                    <div className={primaryRelease && primaryRelease.date <= today ? "date-stamp" : "date-stamp is-upcoming"}>
+                    <div className={dateStampClass}>
                       {dateBadge ? (
                         <>
                           <span>{dateBadge.month}</span>
@@ -461,17 +472,32 @@ function App() {
                     </div>
                     <p className="release-line">
                       {film.releaseDates.length > 0
-                        ? film.releaseDates.map((release) => (
-                            <span
-                              className={release.date <= today ? "release-date is-released" : "release-date is-upcoming"}
-                              key={`${release.type}-${release.date}`}
-                            >
+                        ? (
+                          <>
+                            {film.releaseDates[0]?.market === "us" && (
+                              <span className="release-date is-neutral">
+                                UK release date to be announced{film.year ? ` · ${film.year}` : ""}
+                              </span>
+                            )}
+                            {film.releaseDates.map((release) => (
+                              <span
+                                className={release.market === "us"
+                                  ? "release-date is-neutral"
+                                  : release.date <= today
+                                    ? "release-date is-released"
+                                    : "release-date is-upcoming"}
+                                key={`${release.market}-${release.type}-${release.date}`}
+                              >
                                 <strong>
-                                  {release.type === "previews" ? "Previews" : "Theatrical"}
+                                  {release.market === "us"
+                                    ? "US release"
+                                    : release.type === "previews" ? "Previews" : "Theatrical"}
                                 </strong>{" "}
                                 {formatDate(release.date)}
-                            </span>
-                          ))
+                              </span>
+                            ))}
+                          </>
+                        )
                         : (
                             <span className="release-date is-upcoming">
                               UK release date to be announced{film.year ? ` · ${film.year}` : ""}

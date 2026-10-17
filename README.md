@@ -1,26 +1,11 @@
 # Watch It When
 
-A local web app that keeps an eye on UK theatrical release dates for a public
+A web app that keeps an eye on UK theatrical release dates for a public
 Letterboxd watchlist and lets you mark films whose tickets you have booked.
 
-## Run locally
+## Why I built it
 
-```sh
-npm install
-npm run dev
-```
-
-Open the local URL printed by Vite. The default watchlist is `trjeffries`; use
-the username field to sync another public Letterboxd watchlist.
-
-For a production build, run `npm run build`, then `npm start`.
-
-## Deploy to Vercel
-
-Import the GitHub repository into Vercel and deploy with the default project
-root. The included `vercel.json` builds the Vite app into `dist` and deploys
-`api/watchlist.ts` as the `/api/watchlist` serverless function. No environment
-variables are required.
+For years I maintained a list in my Notes app; upcoming releases split up by year and month, manually typing in names when I saw them, updating release dates, then italicising the names to indicate I'd booked a ticket to see them and deleting them once I'd watched them. So often I wanted to switch it, and there were so, so many options of tracking films (including one that I do use for TV shows!), but none that had the single key functionality of marking a film in any way to indicate booked. So, now I have my own. Hooray!
 
 ## How it works
 

@@ -6,7 +6,11 @@ interface WatchlistFilm {
   year: number | null;
   letterboxdUrl: string;
   posterUrl: string | null;
-  releaseDates: Array<{ date: string; type: "previews" | "theatrical" }>;
+  releaseDates: Array<{
+    date: string;
+    type: "previews" | "theatrical";
+    market: "uk" | "us";
+  }>;
   releaseStatus: "upcoming" | "recent";
 }
 
@@ -129,15 +133,19 @@ function parseLetterboxdDate(value: string): string | null {
   return parsed.toISOString().slice(0, 10);
 }
 
-function ukTheatricalReleaseDates(html: string): Array<{
+function theatricalReleaseDates(html: string, market: "uk" | "us"): Array<{
   date: string;
   type: "previews" | "theatrical";
+  market: "uk" | "us";
 }> {
   const $ = cheerio.load(html);
   const dates = new Map<"previews" | "theatrical", Set<string>>([
     ["previews", new Set()],
     ["theatrical", new Set()],
   ]);
+  const countryNames = market === "uk"
+    ? ["united kingdom", "uk", "great britain"]
+    : ["united states", "united states of america", "usa", "us"];
 
   $("h3.release-table-title").each((_, element) => {
     const heading = $(element).text().trim().toLowerCase();
@@ -158,7 +166,7 @@ function ukTheatricalReleaseDates(html: string): Array<{
           .find(".release-country .name")
           .toArray()
           .map((country) => $(country).text().trim().toLowerCase());
-        if (!countries.some((country) => ["united kingdom", "uk", "great britain"].includes(country))) {
+        if (!countries.some((country) => countryNames.includes(country))) {
           return;
         }
 
@@ -169,7 +177,7 @@ function ukTheatricalReleaseDates(html: string): Array<{
 
   return [...dates.entries()]
     .flatMap(([type, values]) =>
-      [...values].sort().map((date) => ({ date, type })),
+      [...values].sort().map((date) => ({ date, type, market })),
     )
     .sort((left, right) => left.date.localeCompare(right.date));
 }
@@ -210,7 +218,10 @@ async function getFilmDetails(film: {
   if (film.year !== null && film.year < todayYear - 1) return null;
 
   const html = await fetchLetterboxd(new URL(film.path, letterboxdOrigin).toString());
-  const releaseDates = ukTheatricalReleaseDates(html);
+  const ukReleaseDates = theatricalReleaseDates(html, "uk");
+  const releaseDates = ukReleaseDates.length > 0
+    ? ukReleaseDates
+    : theatricalReleaseDates(html, "us");
   const releaseStatus: WatchlistFilm["releaseStatus"] | null =
     releaseDates.some(({ date }) => date >= todayIso)
       ? "upcoming"

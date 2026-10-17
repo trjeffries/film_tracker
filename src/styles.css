@@ -606,6 +606,10 @@ input:focus-visible {
   color: var(--release-red);
 }
 
+.date-stamp.is-neutral {
+  color: #aab2ae;
+}
+
 .date-stamp > span {
   font-family: var(--mono);
   font-size: 8px;
@@ -698,6 +702,18 @@ input:focus-visible {
 
 .release-date.is-upcoming::before {
   background: var(--release-red);
+}
+
+.release-date.is-neutral {
+  color: #9ca5a1;
+}
+
+.release-date.is-neutral::before {
+  background: #7e898b;
+}
+
+.release-date.is-neutral strong {
+  color: #b0b8b4;
 }
 
 .release-date strong {
