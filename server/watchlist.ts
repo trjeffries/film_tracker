@@ -267,9 +267,17 @@ async function loadWatchlist(username: string): Promise<WatchlistResult> {
     .sort((left, right) => {
       const leftDate = left.releaseDates[0]?.date;
       const rightDate = right.releaseDates[0]?.date;
+      const leftYear = leftDate?.slice(0, 4) ?? left.year?.toString();
+      const rightYear = rightDate?.slice(0, 4) ?? right.year?.toString();
+
+      if (leftYear && rightYear && leftYear !== rightYear) {
+        return leftYear.localeCompare(rightYear);
+      }
+      if (!leftYear) return rightYear ? 1 : left.title.localeCompare(right.title);
+      if (!rightYear) return -1;
       if (!leftDate) return rightDate ? 1 : left.title.localeCompare(right.title);
       if (!rightDate) return -1;
-      return leftDate.localeCompare(rightDate);
+      return leftDate.localeCompare(rightDate) || left.title.localeCompare(right.title);
     });
 
   return { username, films, fetchedAt: new Date().toISOString() };

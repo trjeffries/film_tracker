@@ -458,7 +458,6 @@ function App() {
                           {film.title}
                         </a>
                       </h3>
-                      {film.year && <span className="film-year">{film.year}</span>}
                     </div>
                     <p className="release-line">
                       {film.releaseDates.length > 0
