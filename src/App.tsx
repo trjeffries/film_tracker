@@ -26,6 +26,36 @@ type Bookings = Record<string, Booking>;
 
 const defaultUsername = "trjeffries";
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
+function isWatchlistResponse(value: unknown): value is WatchlistResponse {
+  return (
+    isRecord(value) &&
+    typeof value.username === "string" &&
+    typeof value.fetchedAt === "string" &&
+    Array.isArray(value.films) &&
+    value.films.every(
+      (film) =>
+        isRecord(film) &&
+        typeof film.id === "string" &&
+        typeof film.title === "string" &&
+        (typeof film.year === "number" || film.year === null) &&
+        typeof film.letterboxdUrl === "string" &&
+        (typeof film.posterUrl === "string" || film.posterUrl === null) &&
+        (film.releaseStatus === "upcoming" || film.releaseStatus === "recent") &&
+        Array.isArray(film.releaseDates) &&
+        film.releaseDates.every(
+          (release) =>
+            isRecord(release) &&
+            typeof release.date === "string" &&
+            (release.type === "previews" || release.type === "theatrical"),
+        ),
+    )
+  );
+}
+
 function isBookings(value: unknown): value is Bookings {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   return Object.values(value).every(
@@ -181,15 +211,30 @@ function App() {
       const response = await fetch(
         `/api/watchlist?username=${encodeURIComponent(nextUsername)}&refresh=${forceRefresh}`,
       );
-      const payload: unknown = await response.json();
+      const body = await response.text();
+      let payload: unknown;
+      try {
+        payload = JSON.parse(body);
+      } catch {
+        if (!response.ok) {
+          throw new Error(
+            `Watchlist service returned an unexpected response (HTTP ${response.status}). Check the Vercel function logs, then try syncing again.`,
+          );
+        }
+        throw new Error("Watchlist service returned invalid data. Please try syncing again.");
+      }
+
       if (!response.ok) {
         const message =
-          payload && typeof payload === "object" && "error" in payload
-            ? String(payload.error)
-            : "Could not load this Letterboxd watchlist.";
+          isRecord(payload) && typeof payload.error === "string"
+            ? payload.error
+            : `Could not load this Letterboxd watchlist (HTTP ${response.status}).`;
         throw new Error(message);
       }
-      const result = payload as WatchlistResponse;
+      if (!isWatchlistResponse(payload)) {
+        throw new Error("Watchlist service returned data in an unexpected format.");
+      }
+      const result = payload;
       setUsername(nextUsername);
       setUsernameDraft(nextUsername);
       setFilms(result.films);

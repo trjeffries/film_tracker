@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { getWatchlistResult } from "../server/watchlist";
+import { getWatchlistResult } from "../server/watchlist.js";
 
 export default async function handler(
   request: IncomingMessage,

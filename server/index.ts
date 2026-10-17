@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import express from "express";
-import { getWatchlistResult } from "./watchlist";
+import { getWatchlistResult } from "./watchlist.js";
 
 const app = express();
 const port = Number(process.env.PORT ?? 3001);
