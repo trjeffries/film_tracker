@@ -55,6 +55,7 @@ input:focus-visible {
   position: relative;
   width: min(1180px, calc(100% - 80px));
   margin: 0 auto;
+  padding-top: env(safe-area-inset-top);
   overflow: hidden;
 }
 
@@ -353,7 +354,7 @@ input:focus-visible {
   right: 0;
   bottom: 0;
   left: 0;
-  padding: 9px 0 calc(9px + env(safe-area-inset-bottom));
+  padding: 9px 0 calc(20px + env(safe-area-inset-bottom));
   border-top: 1px solid rgba(216, 225, 224, 0.14);
   background: rgba(9, 12, 16, 0.94);
   backdrop-filter: blur(18px);
@@ -835,7 +836,7 @@ input:focus-visible {
 }
 
 .app-shell {
-  padding-bottom: 102px;
+  padding-bottom: calc(114px + env(safe-area-inset-bottom));
 }
 
 @keyframes pulse {
@@ -963,7 +964,7 @@ input:focus-visible {
   }
 
   .stats {
-    padding: 7px 0 calc(7px + env(safe-area-inset-bottom));
+    padding: 7px 0 calc(18px + env(safe-area-inset-bottom));
   }
 
   .stats-inner {
@@ -1072,7 +1073,7 @@ input:focus-visible {
   }
 
   .app-shell {
-    padding-bottom: 92px;
+    padding-bottom: calc(104px + env(safe-area-inset-bottom));
   }
 }
 
