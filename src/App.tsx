@@ -303,9 +303,9 @@ function App() {
       <div className="ambient ambient-two" aria-hidden="true" />
 
       <header className="topbar">
-        <a className="brand" href="/" aria-label="Screening Room home">
+        <a className="brand" href="/" aria-label="Watch It When home">
           <span className="brand-mark"><Icon name="film" /></span>
-          <span>SCREENING ROOM</span>
+          <span>WATCH IT WHEN</span>
         </a>
         <section className="watchlist-tools" aria-label="Watchlist controls">
           <form className="sync-form" onSubmit={handleUsernameSubmit}>

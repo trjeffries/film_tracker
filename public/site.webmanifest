@@ -1,7 +1,7 @@
 {
-  "name": "Screening Room",
-  "short_name": "Screening Room",
-  "description": "Keep up with UK cinema releases from your Letterboxd watchlist.",
+  "name": "Watch It When",
+  "short_name": "Watch It When",
+  "description": "Keep up with UK cinema releases and booked films from your Letterboxd watchlist.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

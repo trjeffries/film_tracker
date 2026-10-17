@@ -1,4 +1,4 @@
-# Screening Room
+# Watch It When
 
 A local web app that keeps an eye on UK theatrical release dates for a public
 Letterboxd watchlist and lets you mark films whose tickets you have booked.
