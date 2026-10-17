@@ -18,8 +18,9 @@ For a production build, run `npm run build`, then `npm start`.
 ## How it works
 
 - The server reads the public Letterboxd watchlist and the film pages’ UK
-  theatrical release tables. Upcoming films and films released in the previous
-  90 days are shown, sorted by release date.
+  release tables. Premiere dates are excluded; theatrical-limited dates are
+  shown as previews alongside theatrical dates. Upcoming films and films
+  released in the previous 30 days are shown, sorted by release date.
 - Watchlist data is cached in memory for 15 minutes; using the Sync button
   refreshes it immediately.
 - Ticket-booking flags are stored in this browser’s local storage, per

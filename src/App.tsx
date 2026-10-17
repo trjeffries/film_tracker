@@ -6,7 +6,7 @@ interface Film {
   year: number | null;
   letterboxdUrl: string;
   posterUrl: string | null;
-  releaseDate: string | null;
+  releaseDates: Array<{ date: string; type: "previews" | "theatrical" }>;
   releaseStatus: "upcoming" | "recent";
 }
 
@@ -258,23 +258,7 @@ function App() {
       <section className="intro">
         <div className="intro-copy">
           <p className="eyebrow"><span /> YOUR WATCHLIST, ON THE BIG SCREEN</p>
-          <h1>Good things<br /><em>are coming.</em></h1>
-          <p className="intro-description">
-            UK cinema dates for the films you’ve saved. Pick your next night out, then keep
-            your tickets in one place.
-          </p>
-        </div>
-        <div className="intro-art" aria-hidden="true">
-          <div className="art-orbit orbit-one" />
-          <div className="art-orbit orbit-two" />
-          <div className="art-sun" />
-          <div className="art-frame">
-            <div className="art-light" />
-            <div className="art-seat seat-one" />
-            <div className="art-seat seat-two" />
-            <div className="art-seat seat-three" />
-          </div>
-          <span className="art-caption">THE NEXT<br />GREAT FILM</span>
+          <h1>Good things <em>are coming.</em></h1>
         </div>
       </section>
 
@@ -327,7 +311,7 @@ function App() {
         <div className="stat-card">
           <span className="stat-label">JUST RELEASED</span>
           <span className="stat-value">{loading ? "—" : recentCount.toString().padStart(2, "0")}</span>
-          <span className="stat-footnote"><span className="stat-dot dot-coral" /> In cinemas in the last 90 days</span>
+          <span className="stat-footnote"><span className="stat-dot dot-coral" /> In cinemas in the last 30 days</span>
         </div>
         <div className="stat-card stat-booked">
           <span className="stat-label">YOUR SEATS</span>
@@ -406,7 +390,8 @@ function App() {
           <div className="film-grid">
             {visibleFilms.map((film, index) => {
               const booking = bookings[film.id]?.booked ?? false;
-              const dateBadge = film.releaseDate ? formatShortDate(film.releaseDate) : null;
+              const primaryRelease = film.releaseDates[0];
+              const dateBadge = primaryRelease ? formatShortDate(primaryRelease.date) : null;
               return (
                 <article className="film-card" key={film.id} style={{ animationDelay: `${index * 35}ms` }}>
                   <div className="poster-wrap">
@@ -433,13 +418,29 @@ function App() {
                   </div>
                   <div className="film-info">
                     <div className="film-title-row">
-                      <h3>{film.title}</h3>
+                      <h3>
+                        <a
+                          className="film-title-link"
+                          href={film.letterboxdUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          {film.title}
+                        </a>
+                      </h3>
                       {film.year && <span className="film-year">{film.year}</span>}
                     </div>
                     <p className="release-line">
                       <span className={film.releaseStatus === "recent" ? "release-dot dot-coral" : "release-dot dot-green"} />
-                      {film.releaseDate
-                        ? `${film.releaseStatus === "recent" ? "In cinemas" : "Opens"} ${formatDate(film.releaseDate)}`
+                      {film.releaseDates.length > 0
+                        ? film.releaseDates.map((release) => (
+                            <span className="release-date" key={`${release.type}-${release.date}`}>
+                                <strong className={release.type === "previews" ? "release-type-previews" : undefined}>
+                                  {release.type === "previews" ? "Previews" : "Theatrical"}
+                                </strong>{" "}
+                                {formatDate(release.date)}
+                            </span>
+                          ))
                         : `UK release date to be announced${film.year ? ` · ${film.year}` : ""}`}
                     </p>
                     <div className="film-actions">
@@ -452,15 +453,6 @@ function App() {
                         <Icon name="ticket" />
                         {booking ? "Tickets booked" : "Mark as booked"}
                       </button>
-                      <a
-                        className="film-link"
-                        href={film.letterboxdUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        aria-label={`View ${film.title} on Letterboxd`}
-                      >
-                        <Icon name="arrow" />
-                      </a>
                     </div>
                   </div>
                 </article>

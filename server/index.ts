@@ -10,7 +10,7 @@ interface WatchlistFilm {
   year: number | null;
   letterboxdUrl: string;
   posterUrl: string | null;
-  releaseDate: string | null;
+  releaseDates: Array<{ date: string; type: "previews" | "theatrical" }>;
   releaseStatus: "upcoming" | "recent";
 }
 
@@ -25,7 +25,7 @@ const port = Number(process.env.PORT ?? 3001);
 const cache = new Map<string, { expiresAt: number; result: WatchlistResult }>();
 const pendingRequests = new Map<string, Promise<WatchlistResult>>();
 const cacheDurationMs = 15 * 60 * 1000;
-const recentReleaseDays = 90;
+const recentReleaseDays = 30;
 const maximumWatchlistPages = 100;
 const letterboxdOrigin = "https://letterboxd.com";
 
@@ -135,30 +135,49 @@ function parseLetterboxdDate(value: string): string | null {
   return parsed.toISOString().slice(0, 10);
 }
 
-function ukTheatricalReleaseDate(html: string): string | null {
+function ukTheatricalReleaseDates(html: string): Array<{
+  date: string;
+  type: "previews" | "theatrical";
+}> {
   const $ = cheerio.load(html);
-  const theatricalHeading = $("h3.release-table-title")
-    .filter((_, element) => $(element).text().trim().toLowerCase() === "theatrical")
-    .first();
-  if (!theatricalHeading.length) return null;
+  const dates = new Map<"previews" | "theatrical", Set<string>>([
+    ["previews", new Set()],
+    ["theatrical", new Set()],
+  ]);
 
-  const releaseGroup = theatricalHeading.closest(".release-table-group");
-  const dates: string[] = [];
-  releaseGroup.find(".release-table.-bydate > .listitem").each((_, row) => {
-    const countries = $(row)
-      .find(".release-country .name")
-      .toArray()
-      .map((country) => $(country).text().trim().toLowerCase());
-    if (!countries.some((country) => ["united kingdom", "uk", "great britain"].includes(country))) {
-      return;
-    }
+  $("h3.release-table-title").each((_, element) => {
+    const heading = $(element).text().trim().toLowerCase();
+    const type =
+      heading === "theatrical limited"
+        ? "previews"
+        : heading === "theatrical"
+          ? "theatrical"
+          : null;
+    if (!type) return;
 
-    const dateText = $(row).find(".date").first().text().trim();
-    const date = parseLetterboxdDate(dateText);
-    if (date) dates.push(date);
+    $(element)
+      .nextAll(".release-table.-bydate")
+      .first()
+      .find("> .listitem")
+      .each((_, row) => {
+        const countries = $(row)
+          .find(".release-country .name")
+          .toArray()
+          .map((country) => $(country).text().trim().toLowerCase());
+        if (!countries.some((country) => ["united kingdom", "uk", "great britain"].includes(country))) {
+          return;
+        }
+
+        const date = parseLetterboxdDate($(row).find(".date").first().text().trim());
+        if (date) dates.get(type)?.add(date);
+      });
   });
 
-  return dates.sort()[0] ?? null;
+  return [...dates.entries()]
+    .flatMap(([type, values]) =>
+      [...values].sort().map((date) => ({ date, type })),
+    )
+    .sort((left, right) => left.date.localeCompare(right.date));
 }
 
 async function mapWithConcurrency<T, R>(
@@ -197,17 +216,17 @@ async function getFilmDetails(film: {
   if (film.year !== null && film.year < todayYear - 1) return null;
 
   const html = await fetchLetterboxd(new URL(film.path, letterboxdOrigin).toString());
-  const releaseDate = ukTheatricalReleaseDate(html);
-  const status: WatchlistFilm["releaseStatus"] | null =
-    releaseDate && releaseDate >= todayIso
+  const releaseDates = ukTheatricalReleaseDates(html);
+  const releaseStatus: WatchlistFilm["releaseStatus"] | null =
+    releaseDates.some(({ date }) => date >= todayIso)
       ? "upcoming"
-      : releaseDate && releaseDate >= cutoffIso
+      : releaseDates.some(({ date }) => date >= cutoffIso && date < todayIso)
         ? "recent"
-        : !releaseDate && film.year !== null && film.year >= todayYear
+        : releaseDates.length === 0 && film.year !== null && film.year >= todayYear
           ? "upcoming"
           : null;
 
-  if (!status) return null;
+  if (!releaseStatus) return null;
 
   const $ = cheerio.load(html);
   const rawPoster = $('meta[property="og:image"]').attr("content");
@@ -232,8 +251,8 @@ async function getFilmDetails(film: {
     year: film.year,
     letterboxdUrl: new URL(film.path, letterboxdOrigin).toString(),
     posterUrl,
-    releaseDate,
-    releaseStatus: status,
+    releaseDates,
+    releaseStatus,
   };
 }
 
@@ -252,9 +271,11 @@ async function loadWatchlist(username: string): Promise<WatchlistResult> {
   const films = (await mapWithConcurrency(releaseCandidates, 4, getFilmDetails))
     .filter((film): film is WatchlistFilm => film !== null)
     .sort((left, right) => {
-      if (!left.releaseDate) return right.releaseDate ? 1 : left.title.localeCompare(right.title);
-      if (!right.releaseDate) return -1;
-      return left.releaseDate.localeCompare(right.releaseDate);
+      const leftDate = left.releaseDates[0]?.date;
+      const rightDate = right.releaseDates[0]?.date;
+      if (!leftDate) return rightDate ? 1 : left.title.localeCompare(right.title);
+      if (!rightDate) return -1;
+      return leftDate.localeCompare(rightDate);
     });
 
   return { username, films, fetchedAt: new Date().toISOString() };

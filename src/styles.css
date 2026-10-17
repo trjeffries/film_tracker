@@ -126,9 +126,21 @@ input:focus-visible {
   transition: color 160ms ease;
 }
 
-.letterboxd-link:hover,
-.film-link:hover {
+.letterboxd-link:hover {
   color: var(--green);
+}
+
+.film-title-link {
+  color: inherit;
+  text-decoration: none;
+  text-decoration-color: rgba(183, 230, 167, 0.48);
+  text-underline-offset: 3px;
+  transition: color 140ms ease, text-decoration-color 140ms ease;
+}
+
+.film-title-link:hover {
+  color: var(--green);
+  text-decoration: underline;
 }
 
 .letterboxd-link svg {
@@ -151,16 +163,15 @@ input:focus-visible {
 .intro {
   position: relative;
   display: flex;
-  min-height: 322px;
+  min-height: 245px;
   align-items: center;
-  justify-content: space-between;
   padding: 46px 5px 30px;
 }
 
 .intro-copy {
   position: relative;
   z-index: 1;
-  max-width: 565px;
+  max-width: 100%;
 }
 
 .eyebrow {
@@ -186,120 +197,12 @@ input:focus-visible {
   font-weight: 600;
   letter-spacing: -0.055em;
   line-height: 0.99;
+  white-space: nowrap;
 }
 
 .intro h1 em {
   color: var(--green);
   font-weight: 600;
-}
-
-.intro-description {
-  max-width: 440px;
-  margin: 18px 0 0;
-  color: #a0a9a7;
-  font-size: 13px;
-  line-height: 1.7;
-}
-
-.intro-art {
-  position: relative;
-  width: 380px;
-  height: 255px;
-  margin-right: 11px;
-}
-
-.art-orbit {
-  position: absolute;
-  top: 15px;
-  left: 50px;
-  width: 270px;
-  height: 190px;
-  border: 1px solid rgba(190, 218, 189, 0.15);
-  border-radius: 50%;
-  transform: rotate(-23deg);
-}
-
-.orbit-two {
-  top: 30px;
-  left: 85px;
-  width: 210px;
-  height: 165px;
-  border-color: rgba(236, 167, 128, 0.18);
-  transform: rotate(25deg);
-}
-
-.art-sun {
-  position: absolute;
-  top: 46px;
-  right: 75px;
-  width: 119px;
-  height: 119px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #e6a27d, #bb7258);
-  box-shadow: 0 0 55px rgba(227, 138, 100, 0.18);
-}
-
-.art-frame {
-  position: absolute;
-  right: 38px;
-  bottom: 26px;
-  left: 45px;
-  height: 120px;
-  overflow: hidden;
-  border: 1px solid rgba(207, 224, 211, 0.3);
-  border-radius: 60% 60% 8px 8px / 80% 80% 8px 8px;
-  background: linear-gradient(180deg, rgba(75, 121, 102, 0.32), rgba(14, 24, 25, 0.91));
-  box-shadow: 0 14px 55px rgba(0, 0, 0, 0.45);
-}
-
-.art-light {
-  position: absolute;
-  top: -2px;
-  left: 50%;
-  width: 86px;
-  height: 90px;
-  background: linear-gradient(180deg, rgba(226, 170, 132, 0.46), transparent);
-  filter: blur(9px);
-  transform: translateX(-50%);
-}
-
-.art-seat {
-  position: absolute;
-  bottom: -15px;
-  width: 57px;
-  height: 58px;
-  border-radius: 22px 22px 6px 6px;
-  background: linear-gradient(140deg, #bb7461, #6c3b3b);
-  box-shadow: inset 7px 0 rgba(255, 209, 175, 0.08), 0 0 27px rgba(0, 0, 0, 0.3);
-}
-
-.seat-one {
-  left: 23%;
-  transform: rotate(-9deg);
-}
-
-.seat-two {
-  left: 43%;
-  bottom: -20px;
-  width: 64px;
-  height: 70px;
-  background: linear-gradient(140deg, #d28c70, #774448);
-}
-
-.seat-three {
-  right: 19%;
-  transform: rotate(9deg);
-}
-
-.art-caption {
-  position: absolute;
-  right: -4px;
-  bottom: 3px;
-  color: rgba(218, 225, 215, 0.5);
-  font-family: var(--mono);
-  font-size: 8px;
-  letter-spacing: 0.15em;
-  line-height: 1.6;
 }
 
 .watchlist-tools {
@@ -820,6 +723,7 @@ input:focus-visible {
 
 .release-line {
   display: flex;
+  flex-wrap: wrap;
   min-height: 15px;
   align-items: center;
   gap: 6px;
@@ -828,9 +732,23 @@ input:focus-visible {
   font-size: 9px;
 }
 
+.release-date {
+  white-space: nowrap;
+}
+
+.release-date strong {
+  color: #dce3d8;
+  font-weight: 600;
+}
+
+.release-date .release-type-previews {
+  color: var(--coral);
+}
+
 .release-dot {
   width: 5px;
   height: 5px;
+  flex: 0 0 auto;
 }
 
 .film-actions {
@@ -844,38 +762,41 @@ input:focus-visible {
 
 .booking-button {
   display: inline-flex;
+  min-height: 32px;
   align-items: center;
   gap: 6px;
-  padding: 4px 0;
-  border: 0;
-  background: transparent;
-  color: #a6b0aa;
+  padding: 0 11px;
+  border: 1px solid rgba(243, 152, 119, 0.32);
+  border-radius: 6px;
+  background: rgba(243, 152, 119, 0.1);
+  color: #f1ad91;
   cursor: pointer;
   font-size: 9px;
-  transition: color 120ms ease;
+  transition: color 140ms ease, background 140ms ease, border-color 140ms ease;
 }
 
-.booking-button:hover,
+.booking-button:hover {
+  border-color: rgba(243, 152, 119, 0.65);
+  background: rgba(243, 152, 119, 0.2);
+  color: #ffd0b8;
+}
+
 .booking-button.is-booked {
+  border-color: rgba(183, 230, 167, 0.56);
+  background: rgba(121, 177, 105, 0.27);
   color: var(--green);
+  box-shadow: inset 0 0 0 1px rgba(183, 230, 167, 0.08);
+}
+
+.booking-button.is-booked:hover {
+  border-color: rgba(183, 230, 167, 0.82);
+  background: rgba(121, 177, 105, 0.38);
 }
 
 .booking-button svg {
   width: 14px;
   height: 14px;
-}
-
-.film-link {
-  display: grid;
-  width: 25px;
-  height: 25px;
-  place-items: center;
-  color: #84908b;
-  transition: color 120ms ease;
-}
-
-.film-link svg {
-  width: 14px;
+  flex: 0 0 auto;
 }
 
 .loading-state,
@@ -972,14 +893,8 @@ input:focus-visible {
     width: min(100% - 48px, 760px);
   }
 
-  .intro-art {
-    width: 280px;
-    margin-right: -30px;
-    transform: scale(0.87);
-  }
-
   .intro-copy {
-    max-width: 480px;
+    max-width: 100%;
   }
 
   .film-grid {
@@ -1010,26 +925,12 @@ input:focus-visible {
   }
 
   .intro {
-    min-height: 288px;
-    padding: 42px 2px 22px;
+    min-height: 185px;
+    padding: 34px 2px 24px;
   }
 
   .intro h1 {
-    font-size: clamp(47px, 13vw, 65px);
-  }
-
-  .intro-description {
-    max-width: 340px;
-    font-size: 12px;
-  }
-
-  .intro-art {
-    position: absolute;
-    right: -148px;
-    bottom: -9px;
-    opacity: 0.36;
-    transform: scale(0.68);
-    transform-origin: center;
+    font-size: clamp(27px, 7.8vw, 46px);
   }
 
   .watchlist-tools {
