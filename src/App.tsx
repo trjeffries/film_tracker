@@ -52,6 +52,17 @@ function formatDate(value: string): string {
   }).format(new Date(`${value}T12:00:00Z`));
 }
 
+function getUkToday(): string {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/London",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
 function formatShortDate(value: string): { day: string; month: string } {
   const date = new Date(`${value}T12:00:00Z`);
   return {
@@ -217,6 +228,7 @@ function App() {
   const bookedCount = films.filter((film) => bookings[film.id]?.booked).length;
   const upcomingCount = films.filter((film) => film.releaseStatus === "upcoming").length;
   const recentCount = films.filter((film) => film.releaseStatus === "recent").length;
+  const today = getUkToday();
 
   const visibleFilms = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -234,6 +246,7 @@ function App() {
   }, [bookings, films, filter, search]);
 
   return (
+    <>
     <main className="app-shell">
       <div className="ambient ambient-one" aria-hidden="true" />
       <div className="ambient ambient-two" aria-hidden="true" />
@@ -243,6 +256,31 @@ function App() {
           <span className="brand-mark"><Icon name="film" /></span>
           <span>SCREENING ROOM</span>
         </a>
+        <section className="watchlist-tools" aria-label="Watchlist controls">
+          <form className="sync-form" onSubmit={handleUsernameSubmit}>
+            <label htmlFor="letterboxd-username">LETTERBOXD USERNAME</label>
+            <div className="username-control">
+              <span className="at-sign">@</span>
+              <input
+                id="letterboxd-username"
+                autoComplete="off"
+                value={usernameDraft}
+                onChange={(event) => setUsernameDraft(event.target.value)}
+              />
+              <button className="sync-button" type="submit" disabled={loading}>
+                <Icon name="refresh" />
+                {loading ? "Syncing" : "Sync"}
+              </button>
+            </div>
+          </form>
+          <div className="sync-meta">
+            <span className={loading ? "sync-indicator is-loading" : "sync-indicator"} />
+            <span>
+              {loading ? "Syncing…" : fetchedAt ? `Synced ${formatSyncTime(fetchedAt)}` : "Ready to sync"}
+            </span>
+            <span className="market-label">UK</span>
+          </div>
+        </section>
         <a
           className="letterboxd-link"
           href={`https://letterboxd.com/${encodeURIComponent(username)}/watchlist/`}
@@ -262,32 +300,6 @@ function App() {
         </div>
       </section>
 
-      <section className="watchlist-tools" aria-label="Watchlist controls">
-        <form className="sync-form" onSubmit={handleUsernameSubmit}>
-          <label htmlFor="letterboxd-username">LETTERBOXD USERNAME</label>
-          <div className="username-control">
-            <span className="at-sign">@</span>
-            <input
-              id="letterboxd-username"
-              autoComplete="off"
-              value={usernameDraft}
-              onChange={(event) => setUsernameDraft(event.target.value)}
-            />
-            <button className="sync-button" type="submit" disabled={loading}>
-              <Icon name="refresh" />
-              {loading ? "Syncing" : "Sync watchlist"}
-            </button>
-          </div>
-        </form>
-        <div className="sync-meta">
-          <span className={loading ? "sync-indicator is-loading" : "sync-indicator"} />
-          <span>
-            {loading ? "Checking for new releases…" : fetchedAt ? `Last synced ${formatSyncTime(fetchedAt)}` : "Ready to sync"}
-          </span>
-          <span className="market-label">UK RELEASES</span>
-        </div>
-      </section>
-
       {error && (
         <div className="message message-error" role="alert">
           <span className="message-icon">!</span>
@@ -302,30 +314,8 @@ function App() {
         </div>
       )}
 
-      <section className="stats" aria-label="Watchlist summary">
-        <div className="stat-card">
-          <span className="stat-label">ON THE WAY</span>
-          <span className="stat-value">{loading ? "—" : upcomingCount.toString().padStart(2, "0")}</span>
-          <span className="stat-footnote"><span className="stat-dot dot-green" /> UK theatrical releases ahead</span>
-        </div>
-        <div className="stat-card">
-          <span className="stat-label">JUST RELEASED</span>
-          <span className="stat-value">{loading ? "—" : recentCount.toString().padStart(2, "0")}</span>
-          <span className="stat-footnote"><span className="stat-dot dot-coral" /> In cinemas in the last 30 days</span>
-        </div>
-        <div className="stat-card stat-booked">
-          <span className="stat-label">YOUR SEATS</span>
-          <span className="stat-value">{bookedCount.toString().padStart(2, "0")}</span>
-          <span className="stat-footnote"><Icon name="ticket" /> Tickets marked as booked</span>
-        </div>
-      </section>
-
       <section className="films-section">
         <div className="section-heading">
-          <div>
-            <p className="eyebrow">THE LINE-UP</p>
-            <h2>Worth leaving the house for<span>.</span></h2>
-          </div>
           <label className="search-control">
             <Icon name="search" />
             <input
@@ -338,29 +328,6 @@ function App() {
               <button type="button" onClick={() => setSearch("")} aria-label="Clear search">×</button>
             )}
           </label>
-        </div>
-
-        <div className="film-toolbar">
-          <div className="filter-tabs" role="tablist" aria-label="Filter films">
-            {([
-              ["all", "All films", films.length],
-              ["upcoming", "Coming soon", upcomingCount],
-              ["recent", "Recently released", recentCount],
-              ["booked", "Tickets booked", bookedCount],
-            ] as const).map(([value, label, count]) => (
-              <button
-                key={value}
-                className={filter === value ? "filter-tab is-active" : "filter-tab"}
-                type="button"
-                role="tab"
-                aria-selected={filter === value}
-                onClick={() => setFilter(value)}
-              >
-                {label}<span>{count}</span>
-              </button>
-            ))}
-          </div>
-          <span className="sort-label">SORTED BY RELEASE DATE <span>↑</span></span>
         </div>
 
         {loading && films.length === 0 ? (
@@ -404,7 +371,7 @@ function App() {
                       </div>
                     )}
                     <div className="poster-shade" />
-                    <div className={film.releaseStatus === "recent" ? "date-stamp is-recent" : "date-stamp"}>
+                    <div className={primaryRelease && primaryRelease.date <= today ? "date-stamp" : "date-stamp is-upcoming"}>
                       {dateBadge ? (
                         <>
                           <span>{dateBadge.month}</span>
@@ -431,17 +398,23 @@ function App() {
                       {film.year && <span className="film-year">{film.year}</span>}
                     </div>
                     <p className="release-line">
-                      <span className={film.releaseStatus === "recent" ? "release-dot dot-coral" : "release-dot dot-green"} />
                       {film.releaseDates.length > 0
                         ? film.releaseDates.map((release) => (
-                            <span className="release-date" key={`${release.type}-${release.date}`}>
-                                <strong className={release.type === "previews" ? "release-type-previews" : undefined}>
+                            <span
+                              className={release.date <= today ? "release-date is-released" : "release-date is-upcoming"}
+                              key={`${release.type}-${release.date}`}
+                            >
+                                <strong>
                                   {release.type === "previews" ? "Previews" : "Theatrical"}
                                 </strong>{" "}
                                 {formatDate(release.date)}
                             </span>
                           ))
-                        : `UK release date to be announced${film.year ? ` · ${film.year}` : ""}`}
+                        : (
+                            <span className="release-date is-upcoming">
+                              UK release date to be announced{film.year ? ` · ${film.year}` : ""}
+                            </span>
+                          )}
                     </p>
                     <div className="film-actions">
                       <button
@@ -467,6 +440,51 @@ function App() {
         <span>Release dates sourced from Letterboxd · Ticket status saved in this browser</span>
       </footer>
     </main>
+    <section className="stats" aria-label="Watchlist summary">
+      <div className="stats-inner" role="group" aria-label="Filter films">
+        <button
+          className={filter === "all" ? "stat-card is-active" : "stat-card"}
+          type="button"
+          aria-pressed={filter === "all"}
+          onClick={() => setFilter("all")}
+        >
+          <span className="stat-label">ALL FILMS</span>
+          <span className="stat-value">{loading ? "—" : films.length.toString().padStart(2, "0")}</span>
+          <span className="stat-footnote">Entire watchlist</span>
+        </button>
+        <button
+          className={filter === "upcoming" ? "stat-card is-active" : "stat-card"}
+          type="button"
+          aria-pressed={filter === "upcoming"}
+          onClick={() => setFilter("upcoming")}
+        >
+          <span className="stat-label">ON THE WAY</span>
+          <span className="stat-value">{loading ? "—" : upcomingCount.toString().padStart(2, "0")}</span>
+          <span className="stat-footnote"><span className="stat-dot dot-green" /> Releases ahead</span>
+        </button>
+        <button
+          className={filter === "recent" ? "stat-card is-active" : "stat-card"}
+          type="button"
+          aria-pressed={filter === "recent"}
+          onClick={() => setFilter("recent")}
+        >
+          <span className="stat-label">JUST RELEASED</span>
+          <span className="stat-value">{loading ? "—" : recentCount.toString().padStart(2, "0")}</span>
+          <span className="stat-footnote"><span className="stat-dot dot-coral" /> In the last 30 days</span>
+        </button>
+        <button
+          className={filter === "booked" ? "stat-card stat-booked is-active" : "stat-card stat-booked"}
+          type="button"
+          aria-pressed={filter === "booked"}
+          onClick={() => setFilter("booked")}
+        >
+          <span className="stat-label">YOUR SEATS</span>
+          <span className="stat-value">{bookedCount.toString().padStart(2, "0")}</span>
+          <span className="stat-footnote"><Icon name="ticket" /> Marked as booked</span>
+        </button>
+      </div>
+    </section>
+    </>
   );
 }
 
