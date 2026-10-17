@@ -15,6 +15,13 @@ the username field to sync another public Letterboxd watchlist.
 
 For a production build, run `npm run build`, then `npm start`.
 
+## Deploy to Vercel
+
+Import the GitHub repository into Vercel and deploy with the default project
+root. The included `vercel.json` builds the Vite app into `dist` and deploys
+`api/watchlist.ts` as the `/api/watchlist` serverless function. No environment
+variables are required.
+
 ## How it works
 
 - The server reads the public Letterboxd watchlist and the film pages’ UK
