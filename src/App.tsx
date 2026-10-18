@@ -29,8 +29,85 @@ type Filter = "all" | "upcoming" | "recent" | "booked";
 type Bookings = Record<string, Booking>;
 const usernameStorageKey = "watch-it-when:username";
 
+interface BookingSyncResponse {
+  bookedFilmIds: string[];
+}
+
 function isValidUsername(username: string): boolean {
   return /^[A-Za-z0-9_-]{1,30}$/.test(username);
+}
+
+function getSyncCodeStorageKey(username: string): string {
+  return `watch-it-when:sync-code:${username.toLowerCase()}`;
+}
+
+function isBookingSyncResponse(value: unknown): value is BookingSyncResponse {
+  return (
+    isRecord(value) &&
+    Array.isArray(value.bookedFilmIds) &&
+    value.bookedFilmIds.every((id) => typeof id === "string")
+  );
+}
+
+async function requestBookingSync(
+  request: Record<string, unknown>,
+): Promise<string[]> {
+  const response = await fetch("/api/bookings", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(request),
+  });
+  const text = await response.text();
+  let payload: unknown;
+  try {
+    payload = JSON.parse(text);
+  } catch {
+    throw new Error(
+      `Booking sync returned an unexpected response (HTTP ${response.status}).`,
+    );
+  }
+  if (!response.ok) {
+    throw new Error(
+      isRecord(payload) && typeof payload.error === "string"
+        ? payload.error
+        : `Could not sync bookings (HTTP ${response.status}).`,
+    );
+  }
+  if (!isBookingSyncResponse(payload)) {
+    throw new Error("Booking sync returned data in an unexpected format.");
+  }
+  return payload.bookedFilmIds;
+}
+
+function bookedFilmIds(bookings: Bookings): string[] {
+  return Object.entries(bookings)
+    .filter(([, booking]) => booking.booked)
+    .map(([filmId]) => filmId);
+}
+
+function bookingsFromFilmIds(filmIds: string[]): Bookings {
+  const updatedAt = new Date().toISOString();
+  return Object.fromEntries(
+    filmIds.map((filmId) => [filmId, { booked: true, updatedAt }]),
+  );
+}
+
+function mergeBookings(bookings: Bookings, filmIds: string[]): Bookings {
+  const merged = { ...bookings };
+  const updatedAt = new Date().toISOString();
+  for (const filmId of filmIds) {
+    if (!merged[filmId]?.booked) {
+      merged[filmId] = { booked: true, updatedAt };
+    }
+  }
+  return merged;
+}
+
+function createSyncCode(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, "");
 }
 
 function readSavedUsername(): { username: string; error: string } {
@@ -220,33 +297,15 @@ function App() {
   const [usernameStorageError, setUsernameStorageError] = useState(
     savedUsername.error,
   );
+  const [bookingSyncCode, setBookingSyncCode] = useState("");
+  const [bookingSyncCodeInput, setBookingSyncCodeInput] = useState("");
+  const [bookingSyncOpen, setBookingSyncOpen] = useState(false);
+  const [bookingSyncBusy, setBookingSyncBusy] = useState(false);
+  const [bookingSyncError, setBookingSyncError] = useState("");
+  const [bookingSyncNotice, setBookingSyncNotice] = useState("");
   const [storageError, setStorageError] = useState("");
   const [fetchedAt, setFetchedAt] = useState("");
   const usernameInput = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (!username) {
-      setBookings({});
-      setStorageError("");
-      return;
-    }
-
-    try {
-      const saved = localStorage.getItem(getStorageKey(username));
-      const parsed: unknown = saved ? JSON.parse(saved) : {};
-      if (!isBookings(parsed)) {
-        throw new Error("Saved ticket status is not in the expected format.");
-      }
-      setBookings(parsed);
-      setStorageError("");
-    } catch (cause) {
-      setStorageError(
-        cause instanceof Error
-          ? cause.message
-          : "Could not read saved ticket status.",
-      );
-    }
-  }, [username]);
 
   useEffect(() => {
     if (!storageError) return;
@@ -267,6 +326,8 @@ function App() {
   }, [bookings, storageError, username]);
 
   async function syncWatchlist(nextUsername = username, forceRefresh = false) {
+    setBookingSyncError("");
+    setBookingSyncNotice("");
     try {
       localStorage.setItem(usernameStorageKey, nextUsername);
       setUsernameStorageError("");
@@ -312,9 +373,68 @@ function App() {
         );
       }
       const result = payload;
+      let restoredBookings: Bookings = {};
+      let savedSyncCode = "";
+      try {
+        const savedBookings = localStorage.getItem(getStorageKey(nextUsername));
+        const parsed: unknown = savedBookings ? JSON.parse(savedBookings) : {};
+        if (!isBookings(parsed)) {
+          throw new Error("Saved ticket status is not in the expected format.");
+        }
+        restoredBookings = parsed;
+        setStorageError("");
+      } catch (cause) {
+        setStorageError(
+          cause instanceof Error
+            ? cause.message
+            : "Could not read saved ticket status.",
+        );
+      }
+
+      try {
+        savedSyncCode =
+          localStorage.getItem(getSyncCodeStorageKey(nextUsername)) ?? "";
+      } catch (cause) {
+        setBookingSyncOpen(true);
+        setBookingSyncError(
+          cause instanceof Error
+            ? `Could not read the saved sync code: ${cause.message}`
+            : "Could not read the saved sync code.",
+        );
+      }
+
+      if (savedSyncCode) {
+        setBookingSyncCode(savedSyncCode);
+        if (!/^[A-Za-z0-9_-]{40,100}$/.test(savedSyncCode)) {
+          setBookingSyncOpen(true);
+          setBookingSyncError("The saved sync code is invalid. Reconnect bookings to continue.");
+        } else {
+          try {
+            const remoteFilmIds = await requestBookingSync({
+              action: "load",
+              username: nextUsername,
+              code: savedSyncCode,
+            });
+            restoredBookings = bookingsFromFilmIds(remoteFilmIds);
+            setBookingSyncError("");
+          } catch (cause) {
+            setBookingSyncOpen(true);
+            setBookingSyncError(
+              cause instanceof Error
+                ? cause.message
+                : "Could not load server-side bookings.",
+            );
+          }
+        }
+      } else {
+        setBookingSyncCode("");
+        setBookingSyncError("");
+      }
+
       setUsername(nextUsername);
       setUsernameDraft(nextUsername);
       setFilms(result.films);
+      setBookings(restoredBookings);
       setFetchedAt(result.fetchedAt);
     } catch (cause) {
       setError(
@@ -349,14 +469,152 @@ function App() {
     void syncWatchlist(cleaned, true);
   }
 
+  function storeSyncCode(code: string) {
+    setBookingSyncCode(code);
+    try {
+      localStorage.setItem(getSyncCodeStorageKey(username), code);
+      setBookingSyncError("");
+    } catch (cause) {
+      setBookingSyncOpen(true);
+      setBookingSyncError(
+        cause instanceof Error
+          ? `Sync is active for this visit, but the code could not be saved in this browser: ${cause.message}`
+          : "Sync is active for this visit, but the code could not be saved in this browser.",
+      );
+    }
+  }
+
+  async function createBookingsSync() {
+    if (!username || bookingSyncBusy) return;
+    const code = createSyncCode();
+    setBookingSyncBusy(true);
+    setBookingSyncError("");
+    setBookingSyncNotice("");
+    try {
+      const filmIds = await requestBookingSync({
+        action: "create",
+        username,
+        code,
+        filmIds: bookedFilmIds(bookings),
+      });
+      setBookings(mergeBookings(bookings, filmIds));
+      storeSyncCode(code);
+      setBookingSyncOpen(true);
+      setBookingSyncNotice("Sync code created. Save it to connect another device.");
+    } catch (cause) {
+      setBookingSyncError(
+        cause instanceof Error ? cause.message : "Could not create booking sync.",
+      );
+    } finally {
+      setBookingSyncBusy(false);
+    }
+  }
+
+  async function connectBookingsSync(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const code = bookingSyncCodeInput.trim();
+    if (!username || bookingSyncBusy) return;
+    if (!/^[A-Za-z0-9_-]{40,100}$/.test(code)) {
+      setBookingSyncError("Enter the complete sync code from your other device.");
+      return;
+    }
+
+    setBookingSyncBusy(true);
+    setBookingSyncError("");
+    setBookingSyncNotice("");
+    try {
+      const filmIds = await requestBookingSync({
+        action: "connect",
+        username,
+        code,
+        filmIds: bookedFilmIds(bookings),
+      });
+      setBookings(mergeBookings(bookings, filmIds));
+      storeSyncCode(code);
+      setBookingSyncCodeInput("");
+      setBookingSyncNotice("Bookings connected and merged with this browser.");
+    } catch (cause) {
+      setBookingSyncError(
+        cause instanceof Error ? cause.message : "Could not connect bookings.",
+      );
+    } finally {
+      setBookingSyncBusy(false);
+    }
+  }
+
+  async function refreshBookingsSync() {
+    if (!username || !bookingSyncCode || bookingSyncBusy) return;
+    setBookingSyncBusy(true);
+    setBookingSyncError("");
+    setBookingSyncNotice("");
+    try {
+      const filmIds = await requestBookingSync({
+        action: "load",
+        username,
+        code: bookingSyncCode,
+      });
+      setBookings(bookingsFromFilmIds(filmIds));
+      setBookingSyncNotice("Bookings synced.");
+    } catch (cause) {
+      setBookingSyncError(
+        cause instanceof Error ? cause.message : "Could not sync bookings.",
+      );
+    } finally {
+      setBookingSyncBusy(false);
+    }
+  }
+
+  async function disableBookingsSync() {
+    try {
+      localStorage.removeItem(getSyncCodeStorageKey(username));
+      setBookingSyncCode("");
+      setBookingSyncNotice("Cloud sync stopped on this device. Server bookings remain available with the sync code.");
+      setBookingSyncError("");
+    } catch (cause) {
+      setBookingSyncError(
+        cause instanceof Error
+          ? cause.message
+          : "Could not remove the saved sync code.",
+      );
+    }
+  }
+
+  async function copyBookingsSyncCode() {
+    try {
+      await navigator.clipboard.writeText(bookingSyncCode);
+      setBookingSyncNotice("Sync code copied.");
+      setBookingSyncError("");
+    } catch {
+      setBookingSyncError("Could not copy the code. Select and copy it manually.");
+    }
+  }
+
   function toggleBooked(filmId: string) {
+    const booked = !bookings[filmId]?.booked;
     setBookings((current) => ({
       ...current,
       [filmId]: {
-        booked: !current[filmId]?.booked,
+        booked,
         updatedAt: new Date().toISOString(),
       },
     }));
+    if (bookingSyncCode && username) {
+      setBookingSyncError("");
+      void requestBookingSync({
+        action: "set",
+        username,
+        code: bookingSyncCode,
+        filmId,
+        booked,
+      }).catch((cause: unknown) => {
+        setBookingSyncOpen(true);
+        setBookingSyncError(
+          cause instanceof Error
+            ? cause.message
+            : "Could not update server-side bookings.",
+        );
+      });
+    }
   }
 
   const bookedCount = films.filter((film) => bookings[film.id]?.booked).length;
@@ -526,6 +784,118 @@ function App() {
               )}
             </label>
           </div>
+
+          {username && (
+            <section className="booking-sync" aria-label="Sync bookings across devices">
+              <div className="booking-sync-heading">
+                <span>
+                  {bookingSyncCode
+                    ? "Bookings sync across devices"
+                    : "Bookings are saved in this browser"}
+                </span>
+                <button
+                  type="button"
+                  aria-expanded={bookingSyncOpen}
+                  onClick={() => setBookingSyncOpen((open) => !open)}
+                >
+                  {bookingSyncOpen
+                    ? "Close"
+                    : bookingSyncCode ? "Manage sync" : "Sync across devices"}
+                </button>
+              </div>
+              {bookingSyncOpen && (
+                <div className="booking-sync-panel">
+                  {bookingSyncCode ? (
+                    <>
+                      <p>
+                        Use this private code with the Letterboxd username{" "}
+                        <strong>{username}</strong> on another device. Anyone
+                        with both can access these bookings.
+                      </p>
+                      <div className="booking-sync-code">
+                        <code>{bookingSyncCode}</code>
+                        <button
+                          type="button"
+                          onClick={() => void copyBookingsSyncCode()}
+                        >
+                          Copy code
+                        </button>
+                      </div>
+                      <div className="booking-sync-actions">
+                        <button
+                          type="button"
+                          disabled={bookingSyncBusy}
+                          onClick={() => void refreshBookingsSync()}
+                        >
+                          {bookingSyncBusy ? "Syncing…" : "Sync now"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void disableBookingsSync()}
+                        >
+                          Stop syncing on this device
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <p>
+                        Create a private code to sync your booked films with
+                        another device, or enter a code you already have.
+                        Existing bookings will be merged.
+                      </p>
+                      <button
+                        className="booking-sync-primary"
+                        type="button"
+                        disabled={bookingSyncBusy}
+                        onClick={() => void createBookingsSync()}
+                      >
+                        {bookingSyncBusy
+                          ? "Setting up…"
+                          : "Create a new sync code"}
+                      </button>
+                      <form
+                        className="booking-sync-connect"
+                        onSubmit={(event) => void connectBookingsSync(event)}
+                      >
+                        <label htmlFor="booking-sync-code">
+                          ALREADY HAVE A SYNC CODE?
+                        </label>
+                        <div>
+                          <input
+                            id="booking-sync-code"
+                            autoCapitalize="none"
+                            autoComplete="off"
+                            value={bookingSyncCodeInput}
+                            onChange={(event) =>
+                              setBookingSyncCodeInput(event.target.value)
+                            }
+                            placeholder="Paste your private code"
+                          />
+                          <button type="submit" disabled={bookingSyncBusy}>
+                            Connect
+                          </button>
+                        </div>
+                      </form>
+                    </>
+                  )}
+                  {bookingSyncBusy && bookingSyncCode && (
+                    <p role="status">Updating bookings…</p>
+                  )}
+                  {bookingSyncError && (
+                    <p className="booking-sync-error" role="alert">
+                      {bookingSyncError}
+                    </p>
+                  )}
+                  {bookingSyncNotice && (
+                    <p className="booking-sync-notice" role="status">
+                      {bookingSyncNotice}
+                    </p>
+                  )}
+                </div>
+              )}
+            </section>
+          )}
 
           {loading && films.length === 0 ? (
             <div className="loading-state">

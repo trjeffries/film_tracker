@@ -506,6 +506,132 @@ input:focus-visible {
   font-size: 17px;
 }
 
+.booking-sync {
+  margin: 10px 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: rgba(16, 21, 26, 0.7);
+}
+
+.booking-sync-heading {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 10px;
+  color: #a6afad;
+  font-size: 10px;
+}
+
+.booking-sync button {
+  border: 1px solid rgba(216, 225, 224, 0.16);
+  border-radius: 5px;
+  background: rgba(216, 225, 224, 0.04);
+  color: #c4ceca;
+  cursor: pointer;
+  font: inherit;
+}
+
+.booking-sync button:hover:not(:disabled) {
+  border-color: rgba(183, 230, 167, 0.42);
+  color: var(--green);
+}
+
+.booking-sync button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.booking-sync-heading button,
+.booking-sync-code button,
+.booking-sync-actions button,
+.booking-sync-connect button {
+  min-height: 28px;
+  padding: 0 9px;
+  font-size: 9px;
+}
+
+.booking-sync-panel {
+  display: grid;
+  gap: 10px;
+  padding: 0 10px 11px;
+  color: #9ca5a1;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.booking-sync-panel p {
+  margin: 0;
+}
+
+.booking-sync-panel strong {
+  color: #dce3d8;
+}
+
+.booking-sync-primary {
+  width: fit-content;
+  min-height: 30px;
+  padding: 0 10px;
+  color: var(--green) !important;
+  font-size: 9px !important;
+}
+
+.booking-sync-connect {
+  display: grid;
+  gap: 5px;
+}
+
+.booking-sync-connect label {
+  color: #818b8c;
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 0.08em;
+}
+
+.booking-sync-connect > div {
+  display: flex;
+  gap: 7px;
+}
+
+.booking-sync-connect input {
+  width: min(100%, 340px);
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid rgba(216, 225, 224, 0.16);
+  border-radius: 5px;
+  background: rgba(9, 12, 16, 0.65);
+  color: #f1eee5;
+  font-size: 10px;
+}
+
+.booking-sync-code {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.booking-sync-code code {
+  overflow-wrap: anywhere;
+  color: #dce3d8;
+  font-size: 10px;
+  user-select: all;
+}
+
+.booking-sync-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.booking-sync-error {
+  color: #f39877;
+}
+
+.booking-sync-notice {
+  color: var(--green);
+}
+
 .film-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

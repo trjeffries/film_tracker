@@ -17,8 +17,14 @@ For years I maintained a list in my Notes app; upcoming releases split up by yea
   refreshes it immediately.
 - The Letterboxd username and ticket-booking flags are stored in this browser’s
   local storage. On later visits, the app restores the username and syncs its
-  watchlist automatically. This data is not sent to Letterboxd or stored on a
-  server.
+  watchlist automatically.
+- Users can optionally sync booked film IDs across devices using a generated
+  private sync code. The code is stored in the browser and is required to access
+  that username’s booking set from another device. Redis stores only booked
+  film IDs; it does not store the Letterboxd password or watchlist.
+  Enable it from **Sync across devices**, save the generated code, then enter
+  the same Letterboxd username and code on another device. Existing local and
+  server bookings are merged when connecting.
 - Unbooked films with a UK release date in the next 30 days have a ticket-search
   link that opens a Google search scoped to Cineworld film pages.
 - The watchlist must be public. Letterboxd may rate-limit or change its page
@@ -28,7 +34,11 @@ For years I maintained a list in my Notes app; upcoming releases split up by yea
 
 - The booking links just search for Cineworld, but again this is just because that's what I use: despite their occasional annoyances (such as an unsearchable website), they do have a very well-priced Unlimited program.
 - It's UK-only, switching to US release dates when UK ones haven't been announced; this is because I live in the UK and have no need for any other countries. Maybe when my usage credits roll around I'll add in an option to choose from multiple countries.
-- Data's stored in-browser only, which means it doesn't sync across devices. This is a slight annoyance, but on the other hand I almost always use my phone anyway, and have absolutely no desire to worry about how to secure other people's data.
+- Booking data is stored in-browser by default. Optional server-side sync uses
+  a private generated code instead of user accounts. Anyone with both the
+  Letterboxd username and sync code can access and change that user's synced
+  bookings, so keep the code private. If the code is lost from all devices,
+  the server-side bookings cannot be recovered elsewhere.
 
 In terms of getting around those, the first is particularly simple to edit in the code (or even override with a browser extension), so feel free to clone the repo and play around with it.
 
@@ -51,6 +61,18 @@ In terms of getting around those, the first is particularly simple to edit in th
    by Vite (usually `http://localhost:5173`) in your browser, then enter a
    Letterboxd username with a public watchlist.
 
+   To test optional server-side booking sync locally, create an untracked
+   `.env.local` file in the project root with the write-enabled Upstash REST
+   credentials from Vercel:
+
+   ```dotenv
+   KV_REST_API_URL=your_database_rest_url
+   KV_REST_API_TOKEN=your_database_write_token
+   ```
+
+   Do not use `KV_REST_API_READ_ONLY_TOKEN` for `KV_REST_API_TOKEN`. Keep the
+   values private; `.env.local` is excluded from Git.
+
 4. To check a production build locally, run:
 
    ```sh
@@ -59,3 +81,11 @@ In terms of getting around those, the first is particularly simple to edit in th
    ```
 
    Then open `http://localhost:3001`.
+
+## Configure server-side booking sync on Vercel
+
+The Vercel project needs the Upstash write credentials exposed as
+`KV_REST_API_URL` and `KV_REST_API_TOKEN` for the Production and Preview
+environments. The read-only token is not sufficient. After adding or changing
+these environment variables, redeploy the project. The credentials are only
+used by the server-side booking API and are never sent to the browser.

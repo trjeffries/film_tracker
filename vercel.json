@@ -4,6 +4,9 @@
   "functions": {
     "api/watchlist.ts": {
       "maxDuration": 60
+    },
+    "api/bookings.ts": {
+      "maxDuration": 10
     }
   }
 }
