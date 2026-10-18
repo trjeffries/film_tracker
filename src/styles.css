@@ -126,7 +126,15 @@ input:focus-visible {
   font-family: var(--mono);
   font-size: 9px;
   letter-spacing: 0.09em;
+  text-align: right;
   transition: color 160ms ease;
+}
+
+.header-links {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 7px;
 }
 
 .letterboxd-link:hover {
@@ -165,9 +173,7 @@ input:focus-visible {
 .intro {
   position: relative;
   display: flex;
-  min-height: 160px;
-  align-items: center;
-  padding: 26px 5px 22px;
+  padding: 14px 5px 10px;
 }
 
 .intro-copy {
@@ -180,10 +186,10 @@ input:focus-visible {
   display: flex;
   align-items: center;
   gap: 9px;
-  margin: 0 0 19px;
+  margin: 0;
   color: var(--green);
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 11px;
   letter-spacing: 0.14em;
 }
 
@@ -507,7 +513,9 @@ input:focus-visible {
 }
 
 .film-card {
+  display: flex;
   min-width: 0;
+  flex-direction: column;
   overflow: hidden;
   border: 1px solid rgba(216, 225, 224, 0.11);
   border-radius: 9px;
@@ -646,24 +654,27 @@ input:focus-visible {
 }
 
 .film-info {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
   padding: 13px 13px 12px;
 }
 
 .film-title-row {
   display: flex;
   min-width: 0;
-  align-items: baseline;
+  align-items: flex-start;
   gap: 7px;
 }
 
 .film-title-row h3 {
-  overflow: hidden;
+  min-width: 0;
   margin: 0;
   color: #f0eee6;
-  font-size: 13px;
+  font-size: 18px;
   font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
 }
 
 .film-year {
@@ -728,6 +739,7 @@ input:focus-visible {
   min-height: 30px;
   align-items: center;
   justify-content: space-between;
+  margin-top: auto;
   border-top: 1px solid rgba(216, 225, 224, 0.09);
   padding-top: 9px;
 }
@@ -769,6 +781,28 @@ input:focus-visible {
   width: 14px;
   height: 14px;
   flex: 0 0 auto;
+}
+
+.booking-link {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  gap: 4px;
+  color: #b8c8c2;
+  font-size: 9px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.booking-link:hover {
+  color: var(--green);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.booking-link svg {
+  width: 12px;
+  height: 12px;
 }
 
 .loading-state,
@@ -973,8 +1007,7 @@ input:focus-visible {
   }
 
   .intro {
-    min-height: 120px;
-    padding: 20px 2px 18px;
+    padding: 12px 2px 8px;
   }
 
   .intro h1 {
@@ -1066,7 +1099,7 @@ input:focus-visible {
   }
 
   .film-title-row h3 {
-    font-size: 12px;
+    font-size: 17px;
   }
 
   .release-line {

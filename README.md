@@ -15,7 +15,11 @@ For years I maintained a list in my Notes app; upcoming releases split up by yea
   released in the previous 30 days are shown, sorted by release date.
 - Watchlist data is cached in memory for 15 minutes; using the Sync button
   refreshes it immediately.
-- Ticket-booking flags are stored in this browser’s local storage, per
-  Letterboxd username. They are not sent to Letterboxd or stored on a server.
+- The Letterboxd username and ticket-booking flags are stored in this browser’s
+  local storage. On later visits, the app restores the username and syncs its
+  watchlist automatically. This data is not sent to Letterboxd or stored on a
+  server.
+- Unbooked films with a UK release date in the next 30 days have a ticket-search
+  link that opens a Google search scoped to Cineworld film pages.
 - The watchlist must be public. Letterboxd may rate-limit or change its page
   markup; if a sync fails, the app shows the error so you can retry later.

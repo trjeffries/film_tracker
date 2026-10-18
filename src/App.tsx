@@ -27,6 +27,31 @@ interface Booking {
 
 type Filter = "all" | "upcoming" | "recent" | "booked";
 type Bookings = Record<string, Booking>;
+const usernameStorageKey = "watch-it-when:username";
+
+function isValidUsername(username: string): boolean {
+  return /^[A-Za-z0-9_-]{1,30}$/.test(username);
+}
+
+function readSavedUsername(): { username: string; error: string } {
+  try {
+    const username = localStorage.getItem(usernameStorageKey) ?? "";
+    if (username && !isValidUsername(username)) {
+      return {
+        username: "",
+        error: "The saved Letterboxd username is invalid. Please enter it again.",
+      };
+    }
+    return { username, error: "" };
+  } catch (cause) {
+    return {
+      username: "",
+      error: cause instanceof Error
+        ? cause.message
+        : "Could not read the saved Letterboxd username.",
+    };
+  }
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object" && !Array.isArray(value);
@@ -106,6 +131,11 @@ function formatShortDate(value: string): { day: string; month: string } {
   };
 }
 
+function cineworldSearchUrl(title: string, year: number | null): string {
+  const query = [`site:cineworld.co.uk/films`, title, year].filter(Boolean).join(" ");
+  return `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+}
+
 function formatSyncTime(value: string): string {
   return new Intl.DateTimeFormat("en-GB", {
     hour: "2-digit",
@@ -164,14 +194,16 @@ function Icon({ name }: { name: "ticket" | "refresh" | "search" | "film" | "arro
 }
 
 function App() {
+  const [savedUsername] = useState(readSavedUsername);
   const [username, setUsername] = useState("");
-  const [usernameDraft, setUsernameDraft] = useState("");
+  const [usernameDraft, setUsernameDraft] = useState(savedUsername.username);
   const [films, setFilms] = useState<Film[]>([]);
   const [bookings, setBookings] = useState<Bookings>({});
   const [filter, setFilter] = useState<Filter>("all");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [usernameStorageError, setUsernameStorageError] = useState(savedUsername.error);
   const [storageError, setStorageError] = useState("");
   const [fetchedAt, setFetchedAt] = useState("");
   const usernameInput = useRef<HTMLInputElement>(null);
@@ -215,6 +247,15 @@ function App() {
   }, [bookings, storageError, username]);
 
   async function syncWatchlist(nextUsername = username, forceRefresh = false) {
+    try {
+      localStorage.setItem(usernameStorageKey, nextUsername);
+      setUsernameStorageError("");
+    } catch (cause) {
+      setUsernameStorageError(
+        cause instanceof Error ? cause.message : "Could not save the Letterboxd username.",
+      );
+    }
+
     setLoading(true);
     setError("");
     try {
@@ -256,6 +297,13 @@ function App() {
     }
   }
 
+  const initialSyncStarted = useRef(false);
+  useEffect(() => {
+    if (!savedUsername.username || initialSyncStarted.current) return;
+    initialSyncStarted.current = true;
+    void syncWatchlist(savedUsername.username);
+  }, []);
+
   function handleUsernameSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const cleaned = usernameDraft.trim();
@@ -264,7 +312,7 @@ function App() {
       usernameInput.current?.focus();
       return;
     }
-    if (!/^[A-Za-z0-9_-]{1,30}$/.test(cleaned)) {
+    if (!isValidUsername(cleaned)) {
       setError("Enter a valid Letterboxd username.");
       return;
     }
@@ -285,6 +333,12 @@ function App() {
   const upcomingCount = films.filter((film) => film.releaseStatus === "upcoming").length;
   const recentCount = films.filter((film) => film.releaseStatus === "recent").length;
   const today = getUkToday();
+  const bookingWindowStart = new Date(`${today}T12:00:00Z`);
+  bookingWindowStart.setUTCDate(bookingWindowStart.getUTCDate() - 30);
+  const bookingWindowStartIso = bookingWindowStart.toISOString().slice(0, 10);
+  const bookingWindowEnd = new Date(`${today}T12:00:00Z`);
+  bookingWindowEnd.setUTCDate(bookingWindowEnd.getUTCDate() + 30);
+  const bookingWindowEndIso = bookingWindowEnd.toISOString().slice(0, 10);
 
   const visibleFilms = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -339,33 +393,35 @@ function App() {
                 <span>{loading ? "Syncing…" : `Synced ${formatSyncTime(fetchedAt)}`}</span>
               </>
             )}
+          </div>
+        </section>
+        <div className="header-links">
+          {username && (
             <a
-              className="market-label"
-              href="https://www.imdb.com/calendar/?region=GB"
+              className="letterboxd-link"
+              href={`https://letterboxd.com/${encodeURIComponent(username)}/watchlist/`}
               target="_blank"
               rel="noreferrer"
             >
-              UK RELEASES
+              LETTERBOXD WATCHLIST
+              <Icon name="arrow" />
             </a>
-          </div>
-        </section>
-        {username && (
+          )}
           <a
             className="letterboxd-link"
-            href={`https://letterboxd.com/${encodeURIComponent(username)}/watchlist/`}
+            href="https://www.imdb.com/calendar/?region=GB"
             target="_blank"
             rel="noreferrer"
           >
-            LETTERBOXD WATCHLIST
+            UK RELEASES ON IMDB
             <Icon name="arrow" />
           </a>
-        )}
+        </div>
       </header>
 
       <section className="intro">
         <div className="intro-copy">
           <p className="eyebrow"><span /> YOUR WATCHLIST, ON THE BIG SCREEN</p>
-          <h1>Good things <em>are coming.</em></h1>
         </div>
       </section>
 
@@ -373,7 +429,13 @@ function App() {
         <div className="message message-error" role="alert">
           <span className="message-icon">!</span>
           <span>{error}</span>
-          <button type="button" onClick={() => void syncWatchlist(username, true)} aria-label="Try syncing again">Try again</button>
+          <button type="button" onClick={() => void syncWatchlist(username || usernameDraft, true)} aria-label="Try syncing again">Try again</button>
+        </div>
+      )}
+      {usernameStorageError && (
+        <div className="message message-error" role="alert">
+          <span className="message-icon">!</span>
+          <span>Saved username could not be stored: {usernameStorageError}</span>
         </div>
       )}
       {storageError && (
@@ -434,6 +496,12 @@ function App() {
           <div className="film-grid">
             {visibleFilms.map((film, index) => {
               const booking = bookings[film.id]?.booked ?? false;
+              const hasUpcomingUkRelease = film.releaseDates.some(
+                (release) =>
+                  release.market === "uk" &&
+                  release.date >= bookingWindowStartIso &&
+                  release.date <= bookingWindowEndIso,
+              );
               const primaryRelease = film.releaseDates[0];
               const hasTheatricalRelease = film.releaseDates.some(
                 (release) => release.market === primaryRelease?.market && release.type === "theatrical",
@@ -527,6 +595,17 @@ function App() {
                         <Icon name="ticket" />
                         {booking ? "Tickets booked" : "Mark as booked"}
                       </button>
+                      {!booking && hasUpcomingUkRelease && (
+                        <a
+                          className="booking-link"
+                          href={cineworldSearchUrl(film.title, film.year)}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          Find tickets
+                          <Icon name="arrow" />
+                        </a>
+                      )}
                     </div>
                   </div>
                 </article>
