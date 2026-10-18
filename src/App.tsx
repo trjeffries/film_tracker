@@ -502,7 +502,16 @@ function App() {
                   release.date >= bookingWindowStartIso &&
                   release.date <= bookingWindowEndIso,
               );
-              const primaryRelease = film.releaseDates[0];
+              const releaseMarket = film.releaseDates[0]?.market;
+              const previewRelease = film.releaseDates.find(
+                (release) => release.market === releaseMarket && release.type === "previews",
+              );
+              const theatricalRelease = film.releaseDates.find(
+                (release) => release.market === releaseMarket && release.type === "theatrical",
+              );
+              const primaryRelease = previewRelease && theatricalRelease && previewRelease.date < today
+                ? theatricalRelease
+                : previewRelease ?? theatricalRelease ?? film.releaseDates[0];
               const hasTheatricalRelease = film.releaseDates.some(
                 (release) => release.market === primaryRelease?.market && release.type === "theatrical",
               );
