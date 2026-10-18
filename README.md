@@ -23,3 +23,38 @@ For years I maintained a list in my Notes app; upcoming releases split up by yea
   link that opens a Google search scoped to Cineworld film pages.
 - The watchlist must be public. Letterboxd may rate-limit or change its page
   markup; if a sync fails, the app shows the error so you can retry later.
+
+## Limitations
+
+- It's UK-only, switching to US release dates when UK ones haven't been announced; this is because I live in the UK and have no need for any other countries. Maybe when my usage credits roll around I'll add in an option to choose from multiple countries.
+- The booking links just search for Cineworld, but again this is just because that's what I use: despite their occasional annoyances (such as an unsearchable website), they do have a very well-priced Unlimited program.
+
+Both of these are easy enough to get around by editing the code, particularly the latter. Feel free to clone the repo and run it on your own machine:
+
+## Run locally
+
+1. Install Node.js and npm.
+2. From the project directory, install the dependencies:
+
+   ```sh
+   npm install
+   ```
+
+3. Start the app in development mode:
+
+   ```sh
+   npm run dev
+   ```
+
+   This starts the Vite frontend and the local API server. Open the URL printed
+   by Vite (usually `http://localhost:5173`) in your browser, then enter a
+   Letterboxd username with a public watchlist.
+
+4. To check a production build locally, run:
+
+   ```sh
+   npm run build
+   npm start
+   ```
+
+   Then open `http://localhost:3001`.

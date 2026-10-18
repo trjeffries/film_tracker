@@ -39,16 +39,18 @@ function readSavedUsername(): { username: string; error: string } {
     if (username && !isValidUsername(username)) {
       return {
         username: "",
-        error: "The saved Letterboxd username is invalid. Please enter it again.",
+        error:
+          "The saved Letterboxd username is invalid. Please enter it again.",
       };
     }
     return { username, error: "" };
   } catch (cause) {
     return {
       username: "",
-      error: cause instanceof Error
-        ? cause.message
-        : "Could not read the saved Letterboxd username.",
+      error:
+        cause instanceof Error
+          ? cause.message
+          : "Could not read the saved Letterboxd username.",
     };
   }
 }
@@ -71,7 +73,8 @@ function isWatchlistResponse(value: unknown): value is WatchlistResponse {
         (typeof film.year === "number" || film.year === null) &&
         typeof film.letterboxdUrl === "string" &&
         (typeof film.posterUrl === "string" || film.posterUrl === null) &&
-        (film.releaseStatus === "upcoming" || film.releaseStatus === "recent") &&
+        (film.releaseStatus === "upcoming" ||
+          film.releaseStatus === "recent") &&
         Array.isArray(film.releaseDates) &&
         film.releaseDates.every(
           (release) =>
@@ -117,14 +120,19 @@ function getUkToday(): string {
     month: "2-digit",
     day: "2-digit",
   }).formatToParts(new Date());
-  const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
+  const values = Object.fromEntries(
+    parts.map(({ type, value }) => [type, value]),
+  );
   return `${values.year}-${values.month}-${values.day}`;
 }
 
 function formatShortDate(value: string): { day: string; month: string } {
   const date = new Date(`${value}T12:00:00Z`);
   return {
-    day: new Intl.DateTimeFormat("en-GB", { day: "2-digit", timeZone: "UTC" }).format(date),
+    day: new Intl.DateTimeFormat("en-GB", {
+      day: "2-digit",
+      timeZone: "UTC",
+    }).format(date),
     month: new Intl.DateTimeFormat("en-GB", { month: "short", timeZone: "UTC" })
       .format(date)
       .toUpperCase(),
@@ -132,7 +140,9 @@ function formatShortDate(value: string): { day: string; month: string } {
 }
 
 function cineworldSearchUrl(title: string, year: number | null): string {
-  const query = [`site:cineworld.co.uk/films`, title, year].filter(Boolean).join(" ");
+  const query = [`site:cineworld.co.uk/films`, title, year]
+    .filter(Boolean)
+    .join(" ");
   return `https://www.google.com/search?q=${encodeURIComponent(query)}`;
 }
 
@@ -143,7 +153,11 @@ function formatSyncTime(value: string): string {
   }).format(new Date(value));
 }
 
-function Icon({ name }: { name: "ticket" | "refresh" | "search" | "film" | "arrow" }) {
+function Icon({
+  name,
+}: {
+  name: "ticket" | "refresh" | "search" | "film" | "arrow";
+}) {
   const common = {
     fill: "none",
     stroke: "currentColor",
@@ -203,7 +217,9 @@ function App() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [usernameStorageError, setUsernameStorageError] = useState(savedUsername.error);
+  const [usernameStorageError, setUsernameStorageError] = useState(
+    savedUsername.error,
+  );
   const [storageError, setStorageError] = useState("");
   const [fetchedAt, setFetchedAt] = useState("");
   const usernameInput = useRef<HTMLInputElement>(null);
@@ -225,7 +241,9 @@ function App() {
       setStorageError("");
     } catch (cause) {
       setStorageError(
-        cause instanceof Error ? cause.message : "Could not read saved ticket status.",
+        cause instanceof Error
+          ? cause.message
+          : "Could not read saved ticket status.",
       );
     }
   }, [username]);
@@ -241,7 +259,9 @@ function App() {
       localStorage.setItem(getStorageKey(username), JSON.stringify(bookings));
     } catch (cause) {
       setStorageError(
-        cause instanceof Error ? cause.message : "Could not save ticket status in this browser.",
+        cause instanceof Error
+          ? cause.message
+          : "Could not save ticket status in this browser.",
       );
     }
   }, [bookings, storageError, username]);
@@ -252,7 +272,9 @@ function App() {
       setUsernameStorageError("");
     } catch (cause) {
       setUsernameStorageError(
-        cause instanceof Error ? cause.message : "Could not save the Letterboxd username.",
+        cause instanceof Error
+          ? cause.message
+          : "Could not save the Letterboxd username.",
       );
     }
 
@@ -272,7 +294,9 @@ function App() {
             `Watchlist service returned an unexpected response (HTTP ${response.status}). Check the Vercel function logs, then try syncing again.`,
           );
         }
-        throw new Error("Watchlist service returned invalid data. Please try syncing again.");
+        throw new Error(
+          "Watchlist service returned invalid data. Please try syncing again.",
+        );
       }
 
       if (!response.ok) {
@@ -283,7 +307,9 @@ function App() {
         throw new Error(message);
       }
       if (!isWatchlistResponse(payload)) {
-        throw new Error("Watchlist service returned data in an unexpected format.");
+        throw new Error(
+          "Watchlist service returned data in an unexpected format.",
+        );
       }
       const result = payload;
       setUsername(nextUsername);
@@ -291,7 +317,11 @@ function App() {
       setFilms(result.films);
       setFetchedAt(result.fetchedAt);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not sync the watchlist.");
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "Could not sync the watchlist.",
+      );
     } finally {
       setLoading(false);
     }
@@ -330,8 +360,12 @@ function App() {
   }
 
   const bookedCount = films.filter((film) => bookings[film.id]?.booked).length;
-  const upcomingCount = films.filter((film) => film.releaseStatus === "upcoming").length;
-  const recentCount = films.filter((film) => film.releaseStatus === "recent").length;
+  const upcomingCount = films.filter(
+    (film) => film.releaseStatus === "upcoming",
+  ).length;
+  const recentCount = films.filter(
+    (film) => film.releaseStatus === "recent",
+  ).length;
   const today = getUkToday();
   const bookingWindowStart = new Date(`${today}T12:00:00Z`);
   bookingWindowStart.setUTCDate(bookingWindowStart.getUTCDate() - 30);
@@ -357,210 +391,282 @@ function App() {
 
   return (
     <>
-    <main className="app-shell">
-      <div className="ambient ambient-one" aria-hidden="true" />
-      <div className="ambient ambient-two" aria-hidden="true" />
+      <main className="app-shell">
+        <div className="ambient ambient-one" aria-hidden="true" />
+        <div className="ambient ambient-two" aria-hidden="true" />
 
-      <header className="topbar">
-        <a className="brand" href="/" aria-label="Watch It When home">
-          <span className="brand-mark"><Icon name="film" /></span>
-          <span>WATCH IT WHEN</span>
-        </a>
-        <section className="watchlist-tools" aria-label="Watchlist controls">
-          <form className="sync-form" onSubmit={handleUsernameSubmit}>
-            <label htmlFor="letterboxd-username">LETTERBOXD USERNAME</label>
-            <div className="username-control">
-              <span className="at-sign">@</span>
-              <input
-                id="letterboxd-username"
-                ref={usernameInput}
-                autoCapitalize="none"
-                autoComplete="off"
-                placeholder="Enter username"
-                value={usernameDraft}
-                onChange={(event) => setUsernameDraft(event.target.value)}
-              />
-              <button className="sync-button" type="submit" disabled={loading}>
-                <Icon name="refresh" />
-                {loading ? "Syncing" : username ? "Sync" : "Load watchlist"}
-              </button>
+        <header className="topbar">
+          <a className="brand" href="/" aria-label="Watch It When home">
+            <span className="brand-mark">
+              <Icon name="film" />
+            </span>
+            <span>WATCH IT WHEN</span>
+          </a>
+          <section className="watchlist-tools" aria-label="Watchlist controls">
+            <form className="sync-form" onSubmit={handleUsernameSubmit}>
+              <label htmlFor="letterboxd-username">LETTERBOXD USERNAME</label>
+              <div className="username-control">
+                <span className="at-sign">@</span>
+                <input
+                  id="letterboxd-username"
+                  ref={usernameInput}
+                  autoCapitalize="none"
+                  autoComplete="off"
+                  placeholder="Enter username"
+                  value={usernameDraft}
+                  onChange={(event) => setUsernameDraft(event.target.value)}
+                />
+                <button
+                  className="sync-button"
+                  type="submit"
+                  disabled={loading}
+                >
+                  <Icon name="refresh" />
+                  {loading ? "Syncing" : username ? "Sync" : "Load watchlist"}
+                </button>
+              </div>
+            </form>
+            <div className="sync-meta">
+              {fetchedAt && (
+                <>
+                  <span
+                    className={
+                      loading ? "sync-indicator is-loading" : "sync-indicator"
+                    }
+                  />
+                  <span>
+                    {loading
+                      ? "Syncing…"
+                      : `Synced ${formatSyncTime(fetchedAt)}`}
+                  </span>
+                </>
+              )}
             </div>
-          </form>
-          <div className="sync-meta">
-            {fetchedAt && (
-              <>
-                <span className={loading ? "sync-indicator is-loading" : "sync-indicator"} />
-                <span>{loading ? "Syncing…" : `Synced ${formatSyncTime(fetchedAt)}`}</span>
-              </>
+          </section>
+          <div className="header-links">
+            {username && (
+              <a
+                className="letterboxd-link"
+                href={`https://letterboxd.com/${encodeURIComponent(username)}/watchlist/`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                WATCHLIST ON LETTERBOXD
+                <Icon name="arrow" />
+              </a>
             )}
-          </div>
-        </section>
-        <div className="header-links">
-          {username && (
             <a
               className="letterboxd-link"
-              href={`https://letterboxd.com/${encodeURIComponent(username)}/watchlist/`}
+              href="https://www.imdb.com/calendar/?region=GB"
               target="_blank"
               rel="noreferrer"
             >
-              LETTERBOXD WATCHLIST
+              UK RELEASES ON IMDB
               <Icon name="arrow" />
             </a>
-          )}
-          <a
-            className="letterboxd-link"
-            href="https://www.imdb.com/calendar/?region=GB"
-            target="_blank"
-            rel="noreferrer"
-          >
-            UK RELEASES ON IMDB
-            <Icon name="arrow" />
-          </a>
-        </div>
-      </header>
-
-      <section className="intro">
-        <div className="intro-copy">
-          <p className="eyebrow"><span /> YOUR WATCHLIST, ON THE BIG SCREEN</p>
-        </div>
-      </section>
-
-      {error && (
-        <div className="message message-error" role="alert">
-          <span className="message-icon">!</span>
-          <span>{error}</span>
-          <button type="button" onClick={() => void syncWatchlist(username || usernameDraft, true)} aria-label="Try syncing again">Try again</button>
-        </div>
-      )}
-      {usernameStorageError && (
-        <div className="message message-error" role="alert">
-          <span className="message-icon">!</span>
-          <span>Saved username could not be stored: {usernameStorageError}</span>
-        </div>
-      )}
-      {storageError && (
-        <div className="message message-error" role="alert">
-          <span className="message-icon">!</span>
-          <span>Ticket status could not be saved: {storageError}</span>
-        </div>
-      )}
-
-      <section className="films-section">
-        <div className="section-heading">
-          <label className="search-control">
-            <Icon name="search" />
-            <input
-              aria-label="Search films"
-              placeholder="Find a film"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-            />
-            {search && (
-              <button type="button" onClick={() => setSearch("")} aria-label="Clear search">×</button>
-            )}
-          </label>
-        </div>
-
-        {loading && films.length === 0 ? (
-          <div className="loading-state">
-            <span className="loading-spinner" />
-            <p>Looking ahead at your watchlist…</p>
-            <span>Finding UK cinema dates on Letterboxd</span>
           </div>
-        ) : visibleFilms.length === 0 ? (
-          <div className={username ? "empty-state" : "empty-state is-welcome"}>
-            <div className="empty-icon"><Icon name="film" /></div>
-            <h3>
-              {!username
-                ? "Your next film night starts here."
-                : films.length === 0
-                  ? "No recent releases found."
-                  : "Nothing on this reel."}
-            </h3>
-            <p>
-              {!username
-                ? "Enter your Letterboxd username above to see upcoming and recently released films."
-                : films.length === 0
-                  ? "We couldn’t find upcoming or recently released UK cinema dates in this watchlist."
-                : search
-                  ? "Try another title or clear your search."
-                  : "No films match this view right now. Check back after your next sync."}
+        </header>
+
+        <section className="intro">
+          <div className="intro-copy">
+            <p className="eyebrow">
+              <span /> YOUR WATCHLIST, ON THE BIG SCREEN
             </p>
-            {username && films.length === 0 && (
-              <button className="empty-action" type="button" onClick={() => void syncWatchlist(username, true)}>
-                <Icon name="refresh" /> Sync {username}’s watchlist
-              </button>
-            )}
           </div>
-        ) : (
-          <div className="film-grid">
-            {visibleFilms.map((film, index) => {
-              const booking = bookings[film.id]?.booked ?? false;
-              const hasUpcomingUkRelease = film.releaseDates.some(
-                (release) =>
-                  release.market === "uk" &&
-                  release.date >= bookingWindowStartIso &&
-                  release.date <= bookingWindowEndIso,
-              );
-              const releaseMarket = film.releaseDates[0]?.market;
-              const previewRelease = film.releaseDates.find(
-                (release) => release.market === releaseMarket && release.type === "previews",
-              );
-              const theatricalRelease = film.releaseDates.find(
-                (release) => release.market === releaseMarket && release.type === "theatrical",
-              );
-              const primaryRelease = previewRelease && theatricalRelease && previewRelease.date < today
-                ? theatricalRelease
-                : previewRelease ?? theatricalRelease ?? film.releaseDates[0];
-              const hasTheatricalRelease = film.releaseDates.some(
-                (release) => release.market === primaryRelease?.market && release.type === "theatrical",
-              );
-              const dateBadge = primaryRelease ? formatShortDate(primaryRelease.date) : null;
-              const dateStampClass = primaryRelease?.market === "us"
-                ? "date-stamp is-neutral"
-                : primaryRelease && primaryRelease.date <= today
-                  ? "date-stamp"
-                  : "date-stamp is-upcoming";
-              return (
-                <article className="film-card" key={film.id} style={{ animationDelay: `${index * 35}ms` }}>
-                  <div className="poster-wrap">
-                    {film.posterUrl ? (
-                      <img className="poster-image" src={film.posterUrl} alt="" loading="lazy" />
-                    ) : (
-                      <div className={`poster-fallback poster-tone-${index % 5}`} aria-hidden="true">
-                        <Icon name="film" />
-                        <span>{film.title.slice(0, 1)}</span>
-                      </div>
-                    )}
-                    <div className="poster-shade" />
-                    <div className={dateStampClass}>
-                      {dateBadge ? (
-                        <>
-                          <span>{dateBadge.month}</span>
-                          <strong>{dateBadge.day}</strong>
-                        </>
+        </section>
+
+        {error && (
+          <div className="message message-error" role="alert">
+            <span className="message-icon">!</span>
+            <span>{error}</span>
+            <button
+              type="button"
+              onClick={() =>
+                void syncWatchlist(username || usernameDraft, true)
+              }
+              aria-label="Try syncing again"
+            >
+              Try again
+            </button>
+          </div>
+        )}
+        {usernameStorageError && (
+          <div className="message message-error" role="alert">
+            <span className="message-icon">!</span>
+            <span>
+              Saved username could not be stored: {usernameStorageError}
+            </span>
+          </div>
+        )}
+        {storageError && (
+          <div className="message message-error" role="alert">
+            <span className="message-icon">!</span>
+            <span>Ticket status could not be saved: {storageError}</span>
+          </div>
+        )}
+
+        <section className="films-section">
+          <div className="section-heading">
+            <label className="search-control">
+              <Icon name="search" />
+              <input
+                aria-label="Search films"
+                placeholder="Find a film"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch("")}
+                  aria-label="Clear search"
+                >
+                  ×
+                </button>
+              )}
+            </label>
+          </div>
+
+          {loading && films.length === 0 ? (
+            <div className="loading-state">
+              <span className="loading-spinner" />
+              <p>Looking ahead at your watchlist…</p>
+              <span>Finding UK cinema dates on Letterboxd</span>
+            </div>
+          ) : visibleFilms.length === 0 ? (
+            <div
+              className={username ? "empty-state" : "empty-state is-welcome"}
+            >
+              <div className="empty-icon">
+                <Icon name="film" />
+              </div>
+              <h3>
+                {!username
+                  ? "Your next film night starts here."
+                  : films.length === 0
+                    ? "No recent releases found."
+                    : "Nothing on this reel."}
+              </h3>
+              <p>
+                {!username
+                  ? "Enter your Letterboxd username above to see upcoming and recently released films."
+                  : films.length === 0
+                    ? "We couldn’t find upcoming or recently released UK cinema dates in this watchlist."
+                    : search
+                      ? "Try another title or clear your search."
+                      : "No films match this view right now. Check back after your next sync."}
+              </p>
+              {username && films.length === 0 && (
+                <button
+                  className="empty-action"
+                  type="button"
+                  onClick={() => void syncWatchlist(username, true)}
+                >
+                  <Icon name="refresh" /> Sync {username}’s watchlist
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="film-grid">
+              {visibleFilms.map((film, index) => {
+                const booking = bookings[film.id]?.booked ?? false;
+                const hasUpcomingUkRelease = film.releaseDates.some(
+                  (release) =>
+                    release.market === "uk" &&
+                    release.date >= bookingWindowStartIso &&
+                    release.date <= bookingWindowEndIso,
+                );
+                const releaseMarket = film.releaseDates[0]?.market;
+                const previewRelease = film.releaseDates.find(
+                  (release) =>
+                    release.market === releaseMarket &&
+                    release.type === "previews",
+                );
+                const theatricalRelease = film.releaseDates.find(
+                  (release) =>
+                    release.market === releaseMarket &&
+                    release.type === "theatrical",
+                );
+                const primaryRelease =
+                  previewRelease &&
+                  theatricalRelease &&
+                  previewRelease.date < today
+                    ? theatricalRelease
+                    : (previewRelease ??
+                      theatricalRelease ??
+                      film.releaseDates[0]);
+                const hasTheatricalRelease = film.releaseDates.some(
+                  (release) =>
+                    release.market === primaryRelease?.market &&
+                    release.type === "theatrical",
+                );
+                const dateBadge = primaryRelease
+                  ? formatShortDate(primaryRelease.date)
+                  : null;
+                const dateStampClass =
+                  primaryRelease?.market === "us"
+                    ? "date-stamp is-neutral"
+                    : primaryRelease && primaryRelease.date <= today
+                      ? "date-stamp"
+                      : "date-stamp is-upcoming";
+                return (
+                  <article
+                    className="film-card"
+                    key={film.id}
+                    style={{ animationDelay: `${index * 35}ms` }}
+                  >
+                    <div className="poster-wrap">
+                      {film.posterUrl ? (
+                        <img
+                          className="poster-image"
+                          src={film.posterUrl}
+                          alt=""
+                          loading="lazy"
+                        />
                       ) : (
-                        <><span>UK DATE</span><strong>—</strong></>
+                        <div
+                          className={`poster-fallback poster-tone-${index % 5}`}
+                          aria-hidden="true"
+                        >
+                          <Icon name="film" />
+                          <span>{film.title.slice(0, 1)}</span>
+                        </div>
+                      )}
+                      <div className="poster-shade" />
+                      <div className={dateStampClass}>
+                        {dateBadge ? (
+                          <>
+                            <span>{dateBadge.month}</span>
+                            <strong>{dateBadge.day}</strong>
+                          </>
+                        ) : (
+                          <>
+                            <span>UK DATE</span>
+                            <strong>—</strong>
+                          </>
+                        )}
+                      </div>
+                      {booking && (
+                        <span className="booked-ribbon">
+                          <Icon name="ticket" /> BOOKED
+                        </span>
                       )}
                     </div>
-                    {booking && <span className="booked-ribbon"><Icon name="ticket" /> BOOKED</span>}
-                  </div>
-                  <div className="film-info">
-                    <div className="film-title-row">
-                      <h3>
-                        <a
-                          className="film-title-link"
-                          href={film.letterboxdUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          {film.title}
-                        </a>
-                      </h3>
-                    </div>
-                    <p className="release-line">
-                      {film.releaseDates.length > 0
-                        ? (
+                    <div className="film-info">
+                      <div className="film-title-row">
+                        <h3>
+                          <a
+                            className="film-title-link"
+                            href={film.letterboxdUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            {film.title}
+                          </a>
+                        </h3>
+                      </div>
+                      <p className="release-line">
+                        {film.releaseDates.length > 0 ? (
                           <>
                             {film.releaseDates[0]?.market === "us" && (
                               <span className="release-date is-neutral">
@@ -569,110 +675,158 @@ function App() {
                             )}
                             {film.releaseDates.map((release) => (
                               <span
-                                className={release.market === "us"
-                                  ? "release-date is-neutral"
-                                  : release.date <= today
-                                    ? "release-date is-released"
-                                    : "release-date is-upcoming"}
+                                className={
+                                  release.market === "us"
+                                    ? "release-date is-neutral"
+                                    : release.date <= today
+                                      ? "release-date is-released"
+                                      : "release-date is-upcoming"
+                                }
                                 key={`${release.market}-${release.type}-${release.date}`}
                               >
                                 <strong>
                                   {release.market === "us"
                                     ? "US release"
-                                      : release.type === "previews"
-                                        ? hasTheatricalRelease ? "Previews" : "Limited"
-                                        : "Theatrical"}
+                                    : release.type === "previews"
+                                      ? hasTheatricalRelease
+                                        ? "Previews"
+                                        : "Limited"
+                                      : "Theatrical"}
                                 </strong>{" "}
                                 {formatDate(release.date)}
                               </span>
                             ))}
                           </>
-                        )
-                        : (
-                            <span className="release-date is-upcoming">
-                              UK release date to be announced{film.year ? ` · ${film.year}` : ""}
-                            </span>
-                          )}
-                    </p>
-                    <div className="film-actions">
-                      <button
-                        className={booking ? "booking-button is-booked" : "booking-button"}
-                        type="button"
-                        onClick={() => toggleBooked(film.id)}
-                        aria-pressed={booking}
-                      >
-                        <Icon name="ticket" />
-                        {booking ? "Tickets booked" : "Mark as booked"}
-                      </button>
-                      {!booking && hasUpcomingUkRelease && (
-                        <a
-                          className="booking-link"
-                          href={cineworldSearchUrl(film.title, film.year)}
-                          target="_blank"
-                          rel="noreferrer"
+                        ) : (
+                          <span className="release-date is-upcoming">
+                            UK release date to be announced
+                            {film.year ? ` · ${film.year}` : ""}
+                          </span>
+                        )}
+                      </p>
+                      <div className="film-actions">
+                        <button
+                          className={
+                            booking
+                              ? "booking-button is-booked"
+                              : "booking-button"
+                          }
+                          type="button"
+                          onClick={() => toggleBooked(film.id)}
+                          aria-pressed={booking}
                         >
-                          Find tickets
-                          <Icon name="arrow" />
-                        </a>
-                      )}
+                          <Icon name="ticket" />
+                          {booking ? "Tickets booked" : "Mark as booked"}
+                        </button>
+                        {!booking && hasUpcomingUkRelease && (
+                          <a
+                            className="booking-link"
+                            href={cineworldSearchUrl(film.title, film.year)}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Find tickets
+                            <Icon name="arrow" />
+                          </a>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        )}
-      </section>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </section>
 
-      <footer className="footer">
-        <span>MADE FOR YOUR NEXT TRIP TO THE CINEMA</span>
-        <span>Release dates sourced from Letterboxd · Ticket status saved in this browser</span>
-      </footer>
-    </main>
-    <section className="stats" aria-label="Watchlist summary">
-      <div className="stats-inner" role="group" aria-label="Filter films">
-        <button
-          className={filter === "all" ? "stat-card is-active" : "stat-card"}
-          type="button"
-          aria-pressed={filter === "all"}
-          onClick={() => setFilter("all")}
-        >
-          <span className="stat-label">ALL FILMS</span>
-          <span className="stat-value">{loading ? "—" : films.length.toString().padStart(2, "0")}</span>
-          <span className="stat-footnote">Entire watchlist</span>
-        </button>
-        <button
-          className={filter === "upcoming" ? "stat-card is-active" : "stat-card"}
-          type="button"
-          aria-pressed={filter === "upcoming"}
-          onClick={() => setFilter("upcoming")}
-        >
-          <span className="stat-label">ON THE WAY</span>
-          <span className="stat-value">{loading ? "—" : upcomingCount.toString().padStart(2, "0")}</span>
-          <span className="stat-footnote"><span className="stat-dot dot-green" /> Releases ahead</span>
-        </button>
-        <button
-          className={filter === "recent" ? "stat-card is-active" : "stat-card"}
-          type="button"
-          aria-pressed={filter === "recent"}
-          onClick={() => setFilter("recent")}
-        >
-          <span className="stat-label">JUST RELEASED</span>
-          <span className="stat-value">{loading ? "—" : recentCount.toString().padStart(2, "0")}</span>
-          <span className="stat-footnote"><span className="stat-dot dot-coral" /> In the last 30 days</span>
-        </button>
-        <button
-          className={filter === "booked" ? "stat-card stat-booked is-active" : "stat-card stat-booked"}
-          type="button"
-          aria-pressed={filter === "booked"}
-          onClick={() => setFilter("booked")}
-        >
-          <span className="stat-label">YOUR SEATS</span>
-          <span className="stat-value">{bookedCount.toString().padStart(2, "0")}</span>
-          <span className="stat-footnote"><Icon name="ticket" /> Marked as booked</span>
-        </button>
-      </div>
-    </section>
+        <footer className="footer">
+          <div className="footer-column">
+            <a
+              href="https://letterboxd.com/trjeffries/"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Follow me on Letterboxd
+            </a>
+            <a
+              href="https://github.com/trjeffries/film_tracker"
+              target="_blank"
+              rel="noreferrer"
+            >
+              View project on GitHub
+            </a>
+          </div>
+          <div className="footer-column footer-details">
+            <span>Release dates sourced from Letterboxd</span>
+            <span>All entered data saved in this browser</span>
+          </div>
+        </footer>
+      </main>
+      <section className="stats" aria-label="Watchlist summary">
+        <div className="stats-inner" role="group" aria-label="Filter films">
+          <button
+            className={filter === "all" ? "stat-card is-active" : "stat-card"}
+            type="button"
+            aria-pressed={filter === "all"}
+            onClick={() => setFilter("all")}
+          >
+            <span className="stat-label">ALL FILMS</span>
+            <span className="stat-value">
+              {loading ? "—" : films.length.toString().padStart(2, "0")}
+            </span>
+            <span className="stat-footnote">Entire watchlist</span>
+          </button>
+          <button
+            className={
+              filter === "upcoming" ? "stat-card is-active" : "stat-card"
+            }
+            type="button"
+            aria-pressed={filter === "upcoming"}
+            onClick={() => setFilter("upcoming")}
+          >
+            <span className="stat-label">ON THE WAY</span>
+            <span className="stat-value">
+              {loading ? "—" : upcomingCount.toString().padStart(2, "0")}
+            </span>
+            <span className="stat-footnote">
+              <span className="stat-dot dot-green" /> Releases ahead
+            </span>
+          </button>
+          <button
+            className={
+              filter === "recent" ? "stat-card is-active" : "stat-card"
+            }
+            type="button"
+            aria-pressed={filter === "recent"}
+            onClick={() => setFilter("recent")}
+          >
+            <span className="stat-label">JUST RELEASED</span>
+            <span className="stat-value">
+              {loading ? "—" : recentCount.toString().padStart(2, "0")}
+            </span>
+            <span className="stat-footnote">
+              <span className="stat-dot dot-coral" /> In the last 30 days
+            </span>
+          </button>
+          <button
+            className={
+              filter === "booked"
+                ? "stat-card stat-booked is-active"
+                : "stat-card stat-booked"
+            }
+            type="button"
+            aria-pressed={filter === "booked"}
+            onClick={() => setFilter("booked")}
+          >
+            <span className="stat-label">YOUR SEATS</span>
+            <span className="stat-value">
+              {bookedCount.toString().padStart(2, "0")}
+            </span>
+            <span className="stat-footnote">
+              <Icon name="ticket" /> Marked as booked
+            </span>
+          </button>
+        </div>
+      </section>
     </>
   );
 }
