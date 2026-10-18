@@ -19,36 +19,31 @@ For years I maintained a list in my Notes app; upcoming releases split up by yea
   local storage. On later visits, the app restores the username and syncs its
   watchlist automatically.
 - Users can optionally sync booked film IDs across devices using a generated
-  private sync code. The code is stored in the browser and is required to access
-  that username’s booking set from another device. Redis stores only booked
-  film IDs; it does not store the Letterboxd password or watchlist.
-  Enable it from **Sync across devices**, save the generated code, then enter
-  the same Letterboxd username and code on another device. Existing local and
-  server bookings are merged when connecting.
+  private three-word phrase. The phrase is stored in the browser and is required
+  to access that username’s booking set from another device. Redis stores only
+  booked film IDs; it does not store the Letterboxd password or watchlist.
+  Enable it from **Sync across devices**, save the generated phrase, then enter
+  the same Letterboxd username and phrase on another device. Existing local
+  and server bookings are merged when connecting.
+- Anyone with both the
+  Letterboxd username and sync code can access and change that user's synced
+  bookings, so keep the code private. If the code is lost from all devices,
+  the server-side bookings cannot be recovered elsewhere.
 - Unbooked films with a UK release date in the next 30 days have a ticket-search
   link that opens a Google search scoped to Cineworld film pages.
 - The watchlist must be public. Letterboxd may rate-limit or change its page
   markup; if a sync fails, the app shows the error so you can retry later.
 
-## Limitations
+## Future roadmap
 
-<<<<<<< HEAD
-- The booking links just search for Cineworld, but again this is just because that's what I use: despite their occasional annoyances (such as an unsearchable website), they do have a very well-priced Unlimited program.
-- It's UK-only, switching to US release dates when UK ones haven't been announced; this is because I live in the UK and have no need for any other countries. Maybe when my usage credits roll around I'll add in an option to choose from multiple countries.
-- Booking data is stored in-browser by default. Optional server-side sync uses
-  a private generated code instead of user accounts. Anyone with both the
-  Letterboxd username and sync code can access and change that user's synced
-  bookings, so keep the code private. If the code is lost from all devices,
-  the server-side bookings cannot be recovered elsewhere.
-=======
-- The booking links just search for Cineworld; this is just because that's what I use: despite their occasional annoyances (such as an unsearchable website), they do have a very well-priced Unlimited program.
-- It's UK-only, switching to US release dates when UK ones haven't been announced; this is again because I live in the UK and have no need for any other countries. Maybe when my usage credits roll around I'll add in an option to choose from multiple countries.
-- Data's stored in-browser only, which means it doesn't sync across devices. This is a slight annoyance, but on the other hand I almost always use my phone anyway, and have absolutely no desire to worry about how to secure other people's data.
->>>>>>> 89706095aeaff8915297c6550b1ef64b01aad6c6
+Two main things I'd like to develop in future, both related to personalisation:
 
-In terms of getting around those, the first is particularly simple to edit in the code (or even override with a browser extension), so feel free to clone the repo and play around with it.
+- Booking links. At the moment they just search for Cineworld, just because that's what I use: despite their occasional annoyances (such as an unsearchable website), they do have a very well-priced Unlimited program. In time, I'll add an option to switch to either generic showtime cites or other specific cinemas.
+- Countries. Similar to the cinema, it's UK-only right now (switching to US release dates when UK ones haven't been announced), but only because this is where I live. Plan in future is to add a choice of countries.
 
 ## Running locally
+
+If you want to download it and run it yourself, here's the info you need:
 
 1. Install Node.js and npm.
 2. From the project directory, install the dependencies:

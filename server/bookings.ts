@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
 
 const maximumBookedFilms = 3000;
-const syncCodePattern = /^[A-Za-z0-9_-]{40,100}$/;
+const syncCodePattern =
+  /^(?:[A-Za-z0-9_-]{40,100}|[a-z]+(?:-[a-z]+){2}|[a-z]+(?:-[a-z]+){5})$/;
 const filmIdPattern = /^\/film\/[a-z0-9-]+\/$/i;
 
 export class BookingStoreError extends Error {
@@ -20,7 +21,7 @@ type BookingSyncRequest =
       code: string;
       filmIds: string[];
     }
-  | { action: "load"; username: string; code: string }
+  | { action: "load" | "delete"; username: string; code: string }
   | {
       action: "set";
       username: string;
@@ -47,7 +48,8 @@ function parseRequest(value: unknown): BookingSyncRequest {
     (action !== "create" &&
       action !== "connect" &&
       action !== "load" &&
-      action !== "set") ||
+    action !== "delete" &&
+    action !== "set") ||
     typeof username !== "string" ||
     !/^[A-Za-z0-9_-]{1,30}$/.test(username) ||
     typeof code !== "string" ||
@@ -102,6 +104,14 @@ const loadVaultScript = `
     return false
   end
   return redis.call('SMEMBERS', KEYS[2])
+`;
+
+const deleteVaultScript = `
+  if redis.call('EXISTS', KEYS[1]) == 0 then
+    return false
+  end
+  redis.call('DEL', KEYS[1], KEYS[2])
+  return {}
 `;
 
 const setBookingScript = `
@@ -230,6 +240,14 @@ export async function syncBookings(value: unknown): Promise<{
     if (result === null || result === false) {
       throw new BookingStoreError(
         "No booking sync was found for that username and code. Reconnect and try again.",
+        404,
+      );
+    }
+  } else if (request.action === "delete") {
+    result = await runRedisScript(deleteVaultScript, keys, []);
+    if (result === null || result === false) {
+      throw new BookingStoreError(
+        "No booking sync was found for that username and code. Check the code and try again.",
         404,
       );
     }
