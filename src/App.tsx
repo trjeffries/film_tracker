@@ -855,14 +855,6 @@ function App() {
               className="booking-sync-prompt"
               aria-label="Booking sync option"
             >
-              <button
-                className="booking-sync-dismiss"
-                type="button"
-                aria-label="Dismiss sync prompt"
-                onClick={() => dismissBookingSyncPrompt()}
-              >
-                ×
-              </button>
               <span>Bookings are saved on this device</span>
               <button
                 className="booking-sync-prompt-action"
@@ -870,6 +862,14 @@ function App() {
                 onClick={() => dismissBookingSyncPrompt(true)}
               >
                 Sync across devices
+              </button>
+              <button
+                className="booking-sync-dismiss"
+                type="button"
+                aria-label="Dismiss sync prompt"
+                onClick={() => dismissBookingSyncPrompt()}
+              >
+                ×
               </button>
             </section>
           )}
