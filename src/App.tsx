@@ -328,6 +328,14 @@ function App() {
   const [storageError, setStorageError] = useState("");
   const [fetchedAt, setFetchedAt] = useState("");
   const usernameInput = useRef<HTMLInputElement>(null);
+  const bookingSyncDialog = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const dialog = bookingSyncDialog.current;
+    if (!dialog) return;
+    if (bookingSyncOpen && !dialog.open) dialog.showModal();
+    if (!bookingSyncOpen && dialog.open) dialog.close();
+  }, [bookingSyncOpen]);
 
   useEffect(() => {
     if (!storageError) return;
@@ -1096,8 +1104,24 @@ function App() {
               >
                 {bookingSyncOpen ? "Close" : "Manage sync"}
               </button>
-              {bookingSyncOpen && (
-                <div className="booking-sync-panel">
+              <dialog
+                ref={bookingSyncDialog}
+                className="booking-sync-panel"
+                aria-labelledby="booking-sync-dialog-title"
+                onClose={() => setBookingSyncOpen(false)}
+              >
+                <div className="booking-sync-dialog-heading">
+                  <h2 id="booking-sync-dialog-title">Sync bookings across devices</h2>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      bookingSyncDialog.current?.close();
+                      setBookingSyncOpen(false);
+                    }}
+                  >
+                    Close
+                  </button>
+                </div>
                   {bookingSyncCode ? (
                     <>
                       <p>
@@ -1211,8 +1235,7 @@ function App() {
                       {bookingSyncNotice}
                     </p>
                   )}
-                </div>
-              )}
+              </dialog>
             </section>
           )}
           <div className="footer-column footer-links">

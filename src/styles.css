@@ -595,10 +595,56 @@ input:focus-visible {
 .booking-sync-panel {
   display: grid;
   gap: 10px;
-  padding: 10px 0 0;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: min(520px, calc(100vw - 34px));
+  max-height: calc(100dvh - 32px - env(safe-area-inset-top));
+  margin: 0;
+  padding: 16px;
+  overflow-y: auto;
+  transform: translate(-50%, -50%);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #10151a;
   color: #9ca5a1;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.32);
   font-size: 10px;
   line-height: 1.5;
+}
+
+.booking-sync-panel:not([open]) {
+  display: none;
+}
+
+.booking-sync-panel[open] {
+  z-index: 1000;
+}
+
+.booking-sync-panel::backdrop {
+  background: rgba(4, 7, 10, 0.72);
+  backdrop-filter: blur(3px);
+}
+
+.booking-sync-dialog-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 2px;
+}
+
+.booking-sync-dialog-heading h2 {
+  margin: 0;
+  color: #e1e6dd;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.booking-sync-dialog-heading button {
+  min-height: 28px;
+  padding: 0 9px;
+  font-size: 9px;
 }
 
 .booking-sync-panel p {
@@ -1108,19 +1154,6 @@ input:focus-visible {
   grid-row: 1;
 }
 
-.footer .booking-sync-panel {
-  position: absolute;
-  bottom: calc(100% + 10px);
-  left: 0;
-  z-index: 5;
-  width: min(384px, calc((100vw - 108px) / 3));
-  padding: 12px;
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  background: #10151a;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.32);
-}
-
 .footer .footer-links {
   grid-column: 2;
   grid-row: 1;
@@ -1175,9 +1208,6 @@ input:focus-visible {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .footer .booking-sync-panel {
-    width: min(373px, calc((100vw - 62px) / 2));
-  }
 }
 
 @media (max-width: 620px) {
@@ -1296,10 +1326,6 @@ input:focus-visible {
   .film-grid {
     grid-template-columns: 1fr;
     gap: 11px;
-  }
-
-  .footer .booking-sync-panel {
-    width: calc(100vw - 34px);
   }
 
   .film-card {
