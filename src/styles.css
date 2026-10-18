@@ -877,13 +877,12 @@ input:focus-visible {
 .footer {
   display: grid;
   align-items: center;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  grid-template-columns: 1fr;
   border-top: 1px solid var(--line);
-  color: #697473;
+  color: #a6afad;
   font-family: var(--mono);
   font-size: 8px;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.09em;
 }
 
 .footer-column {
@@ -892,10 +891,19 @@ input:focus-visible {
 }
 
 .footer a {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
   width: fit-content;
   color: inherit;
   text-decoration: none;
+  text-align: right;
   text-underline-offset: 3px;
+}
+
+.footer a svg {
+  width: 13px;
+  flex: 0 0 auto;
 }
 
 .footer a:hover {
@@ -903,13 +911,13 @@ input:focus-visible {
   text-decoration: underline;
 }
 
-.footer-details {
+.footer-links {
   justify-self: end;
   text-align: right;
 }
 
 .app-shell {
-  padding-bottom: calc(114px + env(safe-area-inset-bottom));
+  padding-bottom: calc(100px + env(safe-area-inset-bottom));
 }
 
 @keyframes pulse {
@@ -1137,14 +1145,21 @@ input:focus-visible {
 
   .footer {
     align-items: flex-start;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
-    gap: 10px;
+    grid-template-columns: 1fr;
     padding: 12px 0;
-    font-size: 8px;
+    font-size: 7px;
+  }
+
+  .footer a {
+    gap: 6px;
+  }
+
+  .footer a svg {
+    width: 11px;
   }
 
   .app-shell {
-    padding-bottom: calc(104px + env(safe-area-inset-bottom));
+    padding-bottom: calc(88px + env(safe-area-inset-bottom));
   }
 }
 

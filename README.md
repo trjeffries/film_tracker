@@ -26,12 +26,13 @@ For years I maintained a list in my Notes app; upcoming releases split up by yea
 
 ## Limitations
 
-- It's UK-only, switching to US release dates when UK ones haven't been announced; this is because I live in the UK and have no need for any other countries. Maybe when my usage credits roll around I'll add in an option to choose from multiple countries.
 - The booking links just search for Cineworld, but again this is just because that's what I use: despite their occasional annoyances (such as an unsearchable website), they do have a very well-priced Unlimited program.
+- It's UK-only, switching to US release dates when UK ones haven't been announced; this is because I live in the UK and have no need for any other countries. Maybe when my usage credits roll around I'll add in an option to choose from multiple countries.
+- Data's stored in-browser only, which means it doesn't sync across devices. This is a slight annoyance, but on the other hand I almost always use my phone anyway, and have absolutely no desire to worry about how to secure other people's data.
 
-Both of these are easy enough to get around by editing the code, particularly the latter. Feel free to clone the repo and run it on your own machine:
+In terms of getting around those, the first is particularly simple to edit in the code (or even override with a browser extension), so feel free to clone the repo and play around with it.
 
-## Run locally
+## Running locally
 
 1. Install Node.js and npm.
 2. From the project directory, install the dependencies:

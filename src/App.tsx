@@ -739,25 +739,23 @@ function App() {
         </section>
 
         <footer className="footer">
-          <div className="footer-column">
+          <div className="footer-column footer-links">
             <a
               href="https://letterboxd.com/trjeffries/"
               target="_blank"
               rel="noreferrer"
             >
-              Follow me on Letterboxd
+              FOLLOW ME ON LETTERBOXD
+              <Icon name="arrow" />
             </a>
             <a
               href="https://github.com/trjeffries/film_tracker"
               target="_blank"
               rel="noreferrer"
             >
-              View project on GitHub
+              VIEW PROJECT ON GITHUB
+              <Icon name="arrow" />
             </a>
-          </div>
-          <div className="footer-column footer-details">
-            <span>Release dates sourced from Letterboxd</span>
-            <span>All entered data saved in this browser</span>
           </div>
         </footer>
       </main>
