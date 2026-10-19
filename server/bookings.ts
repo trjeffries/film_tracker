@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 
 const maximumBookedFilms = 3000;
+const maximumWatchlistFilms = 3000;
+const bookingExpirySeconds = 30 * 24 * 60 * 60;
 const syncCodePattern =
   /^(?:[A-Za-z0-9_-]{40,100}|[a-z]+(?:-[a-z]+){2}|[a-z]+(?:-[a-z]+){5})$/;
 const filmIdPattern = /^\/film\/[a-z0-9-]+\/$/i;
@@ -20,6 +22,12 @@ type BookingSyncRequest =
       username: string;
       code: string;
       filmIds: string[];
+    }
+  | {
+      action: "reconcile";
+      username: string;
+      code: string;
+      watchlistFilmIds: string[];
     }
   | { action: "load" | "delete"; username: string; code: string }
   | {
@@ -49,7 +57,8 @@ function parseRequest(value: unknown): BookingSyncRequest {
       action !== "connect" &&
       action !== "load" &&
     action !== "delete" &&
-    action !== "set") ||
+    action !== "set" &&
+    action !== "reconcile") ||
     typeof username !== "string" ||
     !/^[A-Za-z0-9_-]{1,30}$/.test(username) ||
     typeof code !== "string" ||
@@ -69,6 +78,20 @@ function parseRequest(value: unknown): BookingSyncRequest {
     return { action, username, code, filmIds: validFilmIds };
   }
 
+  if (action === "reconcile") {
+    if (
+      !Array.isArray(value.watchlistFilmIds) ||
+      value.watchlistFilmIds.length > maximumWatchlistFilms
+    ) {
+      throw new BookingStoreError("Invalid watchlist film list.", 400);
+    }
+    const validFilmIds = value.watchlistFilmIds.filter(isFilmId);
+    if (validFilmIds.length !== value.watchlistFilmIds.length) {
+      throw new BookingStoreError("Invalid watchlist film list.", 400);
+    }
+    return { action, username, code, watchlistFilmIds: validFilmIds };
+  }
+
   if (action === "set") {
     if (!isFilmId(filmId) || typeof booked !== "boolean") {
       throw new BookingStoreError("Invalid booking update.", 400);
@@ -85,6 +108,8 @@ const createVaultScript = `
   for i = 1, count do
     redis.call('SADD', KEYS[2], ARGV[i + 1])
   end
+  redis.call('EXPIRE', KEYS[1], ${bookingExpirySeconds})
+  redis.call('EXPIRE', KEYS[2], ${bookingExpirySeconds})
   return redis.call('SMEMBERS', KEYS[2])
 `;
 
@@ -96,6 +121,8 @@ const connectVaultScript = `
   for i = 1, count do
     redis.call('SADD', KEYS[2], ARGV[i + 1])
   end
+  redis.call('EXPIRE', KEYS[1], ${bookingExpirySeconds})
+  redis.call('EXPIRE', KEYS[2], ${bookingExpirySeconds})
   return redis.call('SMEMBERS', KEYS[2])
 `;
 
@@ -103,6 +130,28 @@ const loadVaultScript = `
   if redis.call('EXISTS', KEYS[1]) == 0 then
     return false
   end
+  redis.call('EXPIRE', KEYS[1], ${bookingExpirySeconds})
+  redis.call('EXPIRE', KEYS[2], ${bookingExpirySeconds})
+  return redis.call('SMEMBERS', KEYS[2])
+`;
+
+const reconcileVaultScript = `
+  if redis.call('EXISTS', KEYS[1]) == 0 then
+    return false
+  end
+  local watchlist = {}
+  local count = tonumber(ARGV[1])
+  for i = 1, count do
+    watchlist[ARGV[i + 1]] = true
+  end
+  local booked = redis.call('SMEMBERS', KEYS[2])
+  for _, filmId in ipairs(booked) do
+    if not watchlist[filmId] then
+      redis.call('SREM', KEYS[2], filmId)
+    end
+  end
+  redis.call('EXPIRE', KEYS[1], ${bookingExpirySeconds})
+  redis.call('EXPIRE', KEYS[2], ${bookingExpirySeconds})
   return redis.call('SMEMBERS', KEYS[2])
 `;
 
@@ -123,6 +172,8 @@ const setBookingScript = `
   else
     redis.call('SREM', KEYS[2], ARGV[2])
   end
+  redis.call('EXPIRE', KEYS[1], ${bookingExpirySeconds})
+  redis.call('EXPIRE', KEYS[2], ${bookingExpirySeconds})
   return redis.call('SMEMBERS', KEYS[2])
 `;
 
@@ -248,6 +299,18 @@ export async function syncBookings(value: unknown): Promise<{
     if (result === null || result === false) {
       throw new BookingStoreError(
         "No booking sync was found for that username and code. Check the code and try again.",
+        404,
+      );
+    }
+  } else if (request.action === "reconcile") {
+    const watchlistFilmIds = [...new Set(request.watchlistFilmIds)];
+    result = await runRedisScript(reconcileVaultScript, keys, [
+      String(watchlistFilmIds.length),
+      ...watchlistFilmIds,
+    ]);
+    if (result === null || result === false) {
+      throw new BookingStoreError(
+        "No booking sync was found for that username and code. Reconnect and try again.",
         404,
       );
     }

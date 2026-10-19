@@ -17,11 +17,16 @@ For years I maintained a list in my Notes app; upcoming releases split up by yea
   refreshes it immediately.
 - The Letterboxd username and ticket-booking flags are stored in the browser’s
   local storage. On later visits, the app restores the username and syncs its
-  watchlist automatically.
+  watchlist automatically. When a successful sync confirms that a film has
+  been removed from the Letterboxd watchlist, its saved booking status is
+  removed from this browser and optional server storage as well.
 - Users can optionally sync booked film IDs across devices using a generated
   private three-word phrase. The phrase is stored in the browser and is required
   to access that username’s booking set from another device. Redis stores only
   booked film IDs; it does not store the Letterboxd password or watchlist.
+  Server-side booking data expires after 30 days without a successful sync or
+  booking update. Existing records begin this expiry period the next time they
+  successfully sync, since earlier activity was not tracked.
   Enable it from **Sync across devices**, save the generated phrase, then enter
   the same Letterboxd username and phrase on another device. Existing local
   and server bookings are merged when connecting.

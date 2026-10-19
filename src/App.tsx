@@ -17,6 +17,7 @@ interface Film {
 
 interface WatchlistResponse {
   username: string;
+  watchlistFilmIds: string[];
   films: Film[];
   fetchedAt: string;
 }
@@ -123,6 +124,16 @@ function mergeBookings(bookings: Bookings, filmIds: string[]): Bookings {
   return merged;
 }
 
+function retainWatchlistBookings(
+  bookings: Bookings,
+  watchlistFilmIds: string[],
+): Bookings {
+  const watchlist = new Set(watchlistFilmIds);
+  return Object.fromEntries(
+    Object.entries(bookings).filter(([filmId]) => watchlist.has(filmId)),
+  );
+}
+
 function createSyncCode(): string {
   const indexes = crypto.getRandomValues(new Uint16Array(3));
   return Array.from(indexes, (index) => wordlist[index & 0x7ff]).join("-");
@@ -159,6 +170,11 @@ function isWatchlistResponse(value: unknown): value is WatchlistResponse {
     isRecord(value) &&
     typeof value.username === "string" &&
     typeof value.fetchedAt === "string" &&
+    Array.isArray(value.watchlistFilmIds) &&
+    value.watchlistFilmIds.every(
+      (filmId) =>
+        typeof filmId === "string" && /^\/film\/[a-z0-9-]+\/$/i.test(filmId),
+    ) &&
     Array.isArray(value.films) &&
     value.films.every(
       (film) =>
@@ -422,6 +438,11 @@ function App() {
         );
       }
 
+      restoredBookings = retainWatchlistBookings(
+        restoredBookings,
+        result.watchlistFilmIds,
+      );
+
       try {
         syncPromptDismissed =
           localStorage.getItem(getSyncPromptStorageKey(nextUsername)) ===
@@ -457,9 +478,10 @@ function App() {
         } else {
           try {
             const remoteFilmIds = await requestBookingSync({
-              action: "load",
+              action: "reconcile",
               username: nextUsername,
               code: savedSyncCode,
+              watchlistFilmIds: result.watchlistFilmIds,
             });
             restoredBookings = bookingsFromFilmIds(remoteFilmIds);
             setBookingSyncError("");

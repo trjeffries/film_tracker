@@ -16,6 +16,7 @@ interface WatchlistFilm {
 
 interface WatchlistResult {
   username: string;
+  watchlistFilmIds: string[];
   films: WatchlistFilm[];
   fetchedAt: string;
 }
@@ -291,7 +292,12 @@ async function loadWatchlist(username: string): Promise<WatchlistResult> {
       return leftDate.localeCompare(rightDate) || left.title.localeCompare(right.title);
     });
 
-  return { username, films, fetchedAt: new Date().toISOString() };
+  return {
+    username,
+    watchlistFilmIds: list.map((film) => film.id),
+    films,
+    fetchedAt: new Date().toISOString(),
+  };
 }
 
 export async function getWatchlistResult(
