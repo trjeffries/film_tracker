@@ -755,17 +755,20 @@ function App() {
             </span>
             <span>WATCH IT WHEN</span>
           </a>
+          <p className="eyebrow">
+            <span /> YOUR WATCHLIST, ON THE BIG SCREEN
+          </p>
           <section className="watchlist-tools" aria-label="Watchlist controls">
             <form className="sync-form" onSubmit={handleUsernameSubmit}>
-              <label htmlFor="letterboxd-username">LETTERBOXD USERNAME</label>
               <div className="username-control">
                 <span className="at-sign">@</span>
                 <input
                   id="letterboxd-username"
                   ref={usernameInput}
+                  aria-label="Letterboxd username"
                   autoCapitalize="none"
                   autoComplete="off"
-                  placeholder="Enter username"
+                  placeholder="Letterboxd username"
                   value={usernameDraft}
                   onChange={(event) => setUsernameDraft(event.target.value)}
                 />
@@ -787,10 +790,12 @@ function App() {
                       loading ? "sync-indicator is-loading" : "sync-indicator"
                     }
                   />
-                  <span>
+                  <span className="sync-meta-label">
                     {loading
                       ? "Syncing…"
-                      : `Synced ${formatSyncTime(fetchedAt)}`}
+                      : (
+                        formatSyncTime(fetchedAt)
+                      )}
                   </span>
                 </>
               )}
@@ -819,14 +824,6 @@ function App() {
             </a>
           </div>
         </header>
-
-        <section className="intro">
-          <div className="intro-copy">
-            <p className="eyebrow">
-              <span /> YOUR WATCHLIST, ON THE BIG SCREEN
-            </p>
-          </div>
-        </section>
 
         {error && (
           <div className="message message-error" role="alert">

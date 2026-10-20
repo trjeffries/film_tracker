@@ -83,12 +83,18 @@ input:focus-visible {
 }
 
 .topbar {
-  display: flex;
-  min-height: 78px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 22px;
-  border-bottom: 1px solid var(--line);
+  display: grid;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(183, 230, 167, 0.35);
+}
+
+.topbar > .brand {
+  justify-self: start;
+}
+
+.topbar > .eyebrow {
+  justify-self: start;
 }
 
 .brand,
@@ -101,7 +107,7 @@ input:focus-visible {
 
 .brand {
   gap: 11px;
-  font-size: 11px;
+  font-size: 17px;
   font-weight: 700;
   letter-spacing: 0.17em;
 }
@@ -124,17 +130,16 @@ input:focus-visible {
   gap: 9px;
   color: #a6afad;
   font-family: var(--mono);
-  font-size: 8px;
-  letter-spacing: 0.09em;
-  text-align: right;
+  font-size: 11px;
+  letter-spacing: 0.06em;
   transition: color 160ms ease;
 }
 
 .header-links {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 7px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
 }
 
 .letterboxd-link:hover {
@@ -193,6 +198,10 @@ input:focus-visible {
   letter-spacing: 0.14em;
 }
 
+.topbar > .eyebrow {
+  font-size: 10px;
+}
+
 .eyebrow > span {
   width: 5px;
   height: 5px;
@@ -216,20 +225,12 @@ input:focus-visible {
 .watchlist-tools {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 16px;
 }
 
 .sync-form {
-  flex: 0 1 auto;
-}
-
-.sync-form label {
-  display: block;
-  margin: 0 0 4px 2px;
-  color: #747e80;
-  font-family: var(--mono);
-  font-size: 8px;
-  letter-spacing: 0.12em;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .username-control {
@@ -244,30 +245,32 @@ input:focus-visible {
 }
 
 .username-control input {
-  width: 115px;
-  min-width: 80px;
-  padding: 6px 0;
-  border: 0;
+  width: min(180px, 45vw);
+  min-width: 0;
+  min-height: 36px;
+  padding: 0 5px;
+  border: 1px solid rgba(216, 225, 224, 0.18);
+  border-radius: 6px;
+  background: rgba(16, 21, 26, 0.7);
   outline: 0;
-  background: transparent;
   color: #f1eee5;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .sync-button,
 .empty-action {
   display: inline-flex;
-  min-height: 30px;
+  min-height: 44px;
   align-items: center;
   justify-content: center;
   gap: 7px;
-  padding: 0 10px;
+  padding: 0 14px;
   border: 1px solid rgba(183, 230, 167, 0.24);
   border-radius: 6px;
   background: rgba(183, 230, 167, 0.1);
   color: var(--green);
   cursor: pointer;
-  font-size: 8px;
+  font-size: 13px;
   font-weight: 600;
   transition: background 160ms ease, border-color 160ms ease;
 }
@@ -290,12 +293,16 @@ input:focus-visible {
 
 .sync-meta {
   display: flex;
+  flex: 0 0 max-content;
   align-items: center;
   gap: 7px;
   color: #7d8788;
-  font-family: var(--mono);
-  font-size: 8px;
-  transform: translateY(6px);
+  font-size: 11px;
+}
+
+.sync-meta-label {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .sync-indicator {
@@ -455,6 +462,7 @@ input:focus-visible {
 }
 
 .films-section {
+  padding-top: 12px;
   padding-bottom: 24px;
 }
 
@@ -921,7 +929,7 @@ input:focus-visible {
   gap: 4px;
   margin: 7px 0 11px;
   color: #9ca5a1;
-  font-size: 9px;
+  font-size: 11px;
 }
 
 .release-date {
@@ -1185,23 +1193,8 @@ input:focus-visible {
     max-width: 100%;
   }
 
-  .topbar {
-    gap: 12px;
-  }
-
   .watchlist-tools {
     gap: 10px;
-  }
-
-  .sync-meta {
-    gap: 5px;
-  }
-
-  .sync-meta > span:nth-child(2) {
-    max-width: 80px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
 
   .film-grid {
@@ -1216,25 +1209,16 @@ input:focus-visible {
   }
 
   .topbar {
-    min-height: 65px;
-    flex-wrap: wrap;
-    gap: 10px 8px;
-    padding: 9px 0;
+    gap: 10px;
+    padding: 10px 0;
   }
 
   .brand {
-    font-size: 9px;
-  }
-
-  .letterboxd-link {
-    gap: 6px;
-    font-size: 7px;
+    font-size: 17px;
   }
 
   .watchlist-tools {
-    order: 3;
-    flex: 1 0 100%;
-    justify-content: space-between;
+    flex-wrap: nowrap;
     gap: 8px;
   }
 
@@ -1243,36 +1227,50 @@ input:focus-visible {
     min-width: 0;
   }
 
-  .sync-form label {
-    margin-bottom: 2px;
-    font-size: 7px;
-  }
-
   .username-control {
-    gap: 5px;
+    gap: 7px;
   }
 
   .username-control input {
     width: auto;
     flex: 1;
-    min-width: 30px;
-    font-size: 11px;
+    min-width: 0;
+    font-size: 14px;
   }
 
   .sync-button {
-    min-height: 28px;
-    padding: 0 8px;
-    font-size: 10px;
+    min-height: 36px;
+    padding: 0 12px;
+    font-size: 12px;
   }
 
   .sync-meta {
-    flex: 0 1 auto;
-    justify-content: flex-end;
-    font-size: 7px;
+    flex: 0 0 max-content;
+    min-height: 24px;
+    font-size: 11px;
   }
 
   .sync-meta > span:nth-child(2) {
-    max-width: 80px;
+    flex: 0 0 max-content;
+    white-space: nowrap;
+  }
+
+  .letterboxd-link svg {
+    width: 13px;
+  }
+
+  .header-links {
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    gap: 6px;
+  }
+
+  .letterboxd-link {
+    min-width: 0;
+    gap: 5px;
+    font-size: 9px;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
   }
 
   .letterboxd-link svg {
@@ -1378,7 +1376,7 @@ input:focus-visible {
   .release-line {
     min-height: 27px;
     margin: 5px 0 8px;
-    font-size: 8px;
+    font-size: 10px;
     line-height: 1.4;
   }
 
