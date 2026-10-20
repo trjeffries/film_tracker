@@ -1,7 +1,6 @@
 # Watch It When
 
-A web app that keeps an eye on UK theatrical release dates for a public
-Letterboxd watchlist and lets you mark films whose tickets you have booked.
+A web app that keeps an eye on UK theatrical release dates for a public Letterboxd watchlist and lets you mark films whose tickets you have booked.
 
 ## Why I built it
 
@@ -9,35 +8,13 @@ For years I maintained a list in my Notes app; upcoming releases split up by yea
 
 ## How it works
 
-- The server reads the public Letterboxd watchlist and the film pages’ UK
-  release tables. Premiere dates are excluded; theatrical-limited dates are
-  shown as previews alongside theatrical dates. Upcoming films and films
-  released in the previous 30 days are shown, sorted by release date.
-- Watchlist data is cached in memory for 15 minutes; using the Sync button
-  refreshes it immediately.
-- The Letterboxd username and ticket-booking flags are stored in the browser’s
-  local storage. On later visits, the app restores the username and syncs its
-  watchlist automatically. When a successful sync confirms that a film has
-  been removed from the Letterboxd watchlist, its saved booking status is
-  removed from this browser and optional server storage as well.
-- Users can optionally sync booked film IDs across devices using a generated
-  private three-word phrase. The phrase is stored in the browser and is required
-  to access that username’s booking set from another device. Redis stores only
-  booked film IDs; it does not store the Letterboxd password or watchlist.
-  Server-side booking data expires after 30 days without a successful sync or
-  booking update. Existing records begin this expiry period the next time they
-  successfully sync, since earlier activity was not tracked.
-  Enable it from **Sync across devices**, save the generated phrase, then enter
-  the same Letterboxd username and phrase on another device. Existing local
-  and server bookings are merged when connecting.
-- Anyone with both the
-  Letterboxd username and sync code can access and change that user's synced
-  bookings, so keep the code private. If the code is lost from all devices,
-  the server-side bookings cannot be recovered elsewhere.
-- Unbooked films with a UK release date in the next 30 days have a ticket-search
-  link that opens a Google search scoped to Cineworld film pages.
-- The watchlist must be public. Letterboxd may rate-limit or change its page
-  markup; if a sync fails, the app shows the error so you can retry later.
+- The server reads the public Letterboxd watchlist and the film pages’ UK release tables. Premiere dates are excluded; theatrical-limited dates are shown as previews alongside theatrical dates. Upcoming films and films released in the previous 30 days are shown, sorted by release date.
+- Watchlist data is cached in memory for 15 minutes; using the Sync button refreshes it immediately.
+- The Letterboxd username and ticket-booking flags are initally stored in the browser’s local storage. On later visits, the app restores the username and syncs its watchlist automatically. When a successful sync confirms that a film has been removed from the Letterboxd watchlist, its saved booking status is removed.
+- Users can optionally sync booked film IDs across devices using a generated private three-word phrase. The phrase is stored in the browser and is required to access that username’s booking set from another device. The Redis database stores only booked film IDs, not store the Letterboxd passwords or watchlists, and entries expire 30 days after the most recent sync or booking update.
+- Enable it from **Sync across devices**, save the generated phrase, then enter the same Letterboxd username and phrase on another device. Existing local and server bookings are merged when connecting. Anyone with both the Letterboxd username and sync code can access and change that user's synced bookings, so keep the code private. If the code is lost from all devices, the server-side bookings cannot be recovered elsewhere.
+- Unbooked films with a UK release date in the next 30 days have a ticket-search link that opens a Google search scoped to Cineworld film pages.
+- The watchlist must be public. Letterboxd may rate-limit or change its page markup; if a sync fails, the app shows the error so you can retry later.
 
 ## Future roadmap
 
@@ -63,23 +40,18 @@ If you want to download it and run it yourself, here's the info you need:
    npm run dev
    ```
 
-   This starts the Vite frontend and the local API server. Open the URL printed
-   by Vite (usually `http://localhost:5173`) in your browser, then enter a
-   Letterboxd username with a public watchlist.
+   This starts the Vite frontend and the local API server. Open the URL printed by Vite (usually `http://localhost:5173`) in your browser, then enter a Letterboxd username with a public watchlist.
 
-   To test optional server-side booking sync locally, create an untracked
-   `.env.local` file in the project root with the write-enabled Upstash REST
-   credentials from Vercel:
+4. To test optional server-side booking sync locally, create an untracked `.env.local` file in the project root with the write-enabled Upstash REST credentials from Vercel:
 
    ```dotenv
    KV_REST_API_URL=your_database_rest_url
    KV_REST_API_TOKEN=your_database_write_token
    ```
 
-   Do not use `KV_REST_API_READ_ONLY_TOKEN` for `KV_REST_API_TOKEN`. Keep the
-   values private; `.env.local` is excluded from Git.
+Keep the values private; `.env.local` is excluded from Git.
 
-4. To check a production build locally, run:
+5. To check a production build locally, run:
 
    ```sh
    npm run build
@@ -90,8 +62,4 @@ If you want to download it and run it yourself, here's the info you need:
 
 ## Configure server-side booking sync on Vercel
 
-The Vercel project needs the Upstash write credentials exposed as
-`KV_REST_API_URL` and `KV_REST_API_TOKEN` for the Production and Preview
-environments. The read-only token is not sufficient. After adding or changing
-these environment variables, redeploy the project. The credentials are only
-used by the server-side booking API and are never sent to the browser.
+The Vercel project needs the Upstash write credentials exposed as `KV_REST_API_URL` and `KV_REST_API_TOKEN` for the Production and Preview environments. The read-only token is not sufficient. After adding or changing these environment variables, redeploy the project. The credentials are only used by the server-side booking API and are never sent to the browser.
