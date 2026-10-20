@@ -791,11 +791,7 @@ function App() {
                     }
                   />
                   <span className="sync-meta-label">
-                    {loading
-                      ? "Syncing…"
-                      : (
-                        formatSyncTime(fetchedAt)
-                      )}
+                    {loading ? "Syncing…" : formatSyncTime(fetchedAt)}
                   </span>
                 </>
               )}
@@ -805,21 +801,21 @@ function App() {
             {username && (
               <a
                 className="letterboxd-link"
-                href={`https://letterboxd.com/${encodeURIComponent(username)}/watchlist/`}
+                href="https://www.imdb.com/calendar/?region=GB"
                 target="_blank"
                 rel="noreferrer"
               >
-                WATCHLIST ON LETTERBOXD
+                UK RELEASES ON IMDB
                 <Icon name="arrow" />
               </a>
             )}
             <a
               className="letterboxd-link"
-              href="https://www.imdb.com/calendar/?region=GB"
+              href={`https://letterboxd.com/${encodeURIComponent(username)}/watchlist/`}
               target="_blank"
               rel="noreferrer"
             >
-              UK RELEASES ON IMDB
+              WATCHLIST ON LETTERBOXD
               <Icon name="arrow" />
             </a>
           </div>
@@ -1130,7 +1126,9 @@ function App() {
                 onClose={() => setBookingSyncOpen(false)}
               >
                 <div className="booking-sync-dialog-heading">
-                  <h2 id="booking-sync-dialog-title">Sync bookings across devices</h2>
+                  <h2 id="booking-sync-dialog-title">
+                    Sync bookings across devices
+                  </h2>
                   <button
                     type="button"
                     onClick={() => {
@@ -1141,119 +1139,116 @@ function App() {
                     Close
                   </button>
                 </div>
-                  {bookingSyncCode ? (
-                    <>
-                      <p>
-                        Use this private phrase or code with the Letterboxd
-                        username <strong>{username}</strong> on another device.
-                        Anyone with both can access these bookings.
-                      </p>
-                      <div className="booking-sync-code">
-                        <code>{bookingSyncCode}</code>
-                      </div>
-                      <div className="booking-sync-actions">
-                        <button
-                          type="button"
-                          onClick={() => void copyBookingsSyncCode()}
-                        >
-                          Copy sync key
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setBookingSyncDeleteConfirm(true)}
-                        >
-                          Delete server data
-                        </button>
-                      </div>
-                      {bookingSyncDeleteConfirm && (
-                        <div
-                          className="booking-sync-delete-confirm"
-                          role="alert"
-                        >
-                          <p>
-                            This permanently deletes the synced bookings from
-                            the server and removes the saved phrase on this
-                            device. Bookings currently on this device stay here.
-                            Other devices keep their synced data, but their
-                            saved phrase will no longer sync.
-                          </p>
-                          <div className="booking-sync-actions">
-                            <button
-                              type="button"
-                              disabled={bookingSyncBusy}
-                              onClick={() => setBookingSyncDeleteConfirm(false)}
-                            >
-                              Cancel
-                            </button>
-                            <button
-                              className="booking-sync-delete"
-                              type="button"
-                              disabled={bookingSyncBusy}
-                              onClick={() => void deleteBookingsSync()}
-                            >
-                              {bookingSyncBusy
-                                ? "Deleting…"
-                                : "Permanently delete"}
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      <p>
-                        Create a private three-word phrase to sync your booked
-                        films with another device, or enter a phrase or code you
-                        already have. Existing bookings will be merged.
-                      </p>
+                {bookingSyncCode ? (
+                  <>
+                    <p>
+                      Use this private phrase or code with the Letterboxd
+                      username <strong>{username}</strong> on another device.
+                      Anyone with both can access these bookings.
+                    </p>
+                    <div className="booking-sync-code">
+                      <code>{bookingSyncCode}</code>
+                    </div>
+                    <div className="booking-sync-actions">
                       <button
-                        className="booking-sync-primary"
                         type="button"
-                        disabled={bookingSyncBusy}
-                        onClick={() => void createBookingsSync()}
+                        onClick={() => void copyBookingsSyncCode()}
                       >
-                        {bookingSyncBusy
-                          ? "Setting up…"
-                          : "Create a new sync code"}
+                        Copy sync key
                       </button>
-                      <form
-                        className="booking-sync-connect"
-                        onSubmit={(event) => void connectBookingsSync(event)}
+                      <button
+                        type="button"
+                        onClick={() => setBookingSyncDeleteConfirm(true)}
                       >
-                        <label htmlFor="booking-sync-code">
-                          ALREADY HAVE A SYNC CODE?
-                        </label>
-                        <div>
-                          <input
-                            id="booking-sync-code"
-                            autoCapitalize="none"
-                            autoComplete="off"
-                            value={bookingSyncCodeInput}
-                            onChange={(event) =>
-                              setBookingSyncCodeInput(event.target.value)
-                            }
-                            placeholder="Enter your private phrase or code"
-                          />
-                          <button type="submit" disabled={bookingSyncBusy}>
-                            Connect
+                        Delete server data
+                      </button>
+                    </div>
+                    {bookingSyncDeleteConfirm && (
+                      <div className="booking-sync-delete-confirm" role="alert">
+                        <p>
+                          This permanently deletes the synced bookings from the
+                          server and removes the saved phrase on this device.
+                          Bookings currently on this device stay here. Other
+                          devices keep their synced data, but their saved phrase
+                          will no longer sync.
+                        </p>
+                        <div className="booking-sync-actions">
+                          <button
+                            type="button"
+                            disabled={bookingSyncBusy}
+                            onClick={() => setBookingSyncDeleteConfirm(false)}
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            className="booking-sync-delete"
+                            type="button"
+                            disabled={bookingSyncBusy}
+                            onClick={() => void deleteBookingsSync()}
+                          >
+                            {bookingSyncBusy
+                              ? "Deleting…"
+                              : "Permanently delete"}
                           </button>
                         </div>
-                      </form>
-                    </>
-                  )}
-                  {bookingSyncBusy && bookingSyncCode && (
-                    <p role="status">Updating bookings…</p>
-                  )}
-                  {bookingSyncError && (
-                    <p className="booking-sync-error" role="alert">
-                      {bookingSyncError}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <p>
+                      Create a private three-word phrase to sync your booked
+                      films with another device, or enter a phrase or code you
+                      already have. Existing bookings will be merged.
                     </p>
-                  )}
-                  {bookingSyncNotice && (
-                    <p className="booking-sync-notice" role="status">
-                      {bookingSyncNotice}
-                    </p>
-                  )}
+                    <button
+                      className="booking-sync-primary"
+                      type="button"
+                      disabled={bookingSyncBusy}
+                      onClick={() => void createBookingsSync()}
+                    >
+                      {bookingSyncBusy
+                        ? "Setting up…"
+                        : "Create a new sync code"}
+                    </button>
+                    <form
+                      className="booking-sync-connect"
+                      onSubmit={(event) => void connectBookingsSync(event)}
+                    >
+                      <label htmlFor="booking-sync-code">
+                        ALREADY HAVE A SYNC CODE?
+                      </label>
+                      <div>
+                        <input
+                          id="booking-sync-code"
+                          autoCapitalize="none"
+                          autoComplete="off"
+                          value={bookingSyncCodeInput}
+                          onChange={(event) =>
+                            setBookingSyncCodeInput(event.target.value)
+                          }
+                          placeholder="Enter your private phrase or code"
+                        />
+                        <button type="submit" disabled={bookingSyncBusy}>
+                          Connect
+                        </button>
+                      </div>
+                    </form>
+                  </>
+                )}
+                {bookingSyncBusy && bookingSyncCode && (
+                  <p role="status">Updating bookings…</p>
+                )}
+                {bookingSyncError && (
+                  <p className="booking-sync-error" role="alert">
+                    {bookingSyncError}
+                  </p>
+                )}
+                {bookingSyncNotice && (
+                  <p className="booking-sync-notice" role="status">
+                    {bookingSyncNotice}
+                  </p>
+                )}
               </dialog>
             </section>
           )}
