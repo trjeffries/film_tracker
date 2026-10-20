@@ -1044,7 +1044,7 @@ function App() {
                           <>
                             {film.releaseDates[0]?.market === "us" && (
                               <span className="release-date is-neutral">
-                                UK release date to be announced
+                                UK release not yet scheduled
                               </span>
                             )}
                             {film.releaseDates.map((release) => (
@@ -1073,7 +1073,7 @@ function App() {
                           </>
                         ) : (
                           <span className="release-date is-upcoming">
-                            UK release date to be announced
+                            UK release not yet scheduled
                             {film.year ? ` · ${film.year}` : ""}
                           </span>
                         )}

@@ -929,7 +929,7 @@ input:focus-visible {
   gap: 4px;
   margin: 7px 0 11px;
   color: #9ca5a1;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .release-date {
@@ -1376,7 +1376,7 @@ input:focus-visible {
   .release-line {
     min-height: 27px;
     margin: 5px 0 8px;
-    font-size: 10px;
+    font-size: 12px;
     line-height: 1.4;
   }
 
