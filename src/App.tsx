@@ -25,7 +25,10 @@ interface WatchlistResponse {
 interface Booking {
   booked: boolean;
   updatedAt: string;
+  date?: string;
+  url?: string;
 }
+type BookingDetails = Pick<Booking, "date" | "url">;
 
 type Filter = "all" | "upcoming" | "recent" | "booked";
 type Bookings = Record<string, Booking>;
@@ -33,6 +36,13 @@ const usernameStorageKey = "watch-it-when:username";
 
 interface BookingSyncResponse {
   bookedFilmIds: string[];
+  bookingDetails: Record<string, BookingDetails>;
+}
+
+function bookingDetails(bookings: Bookings): Record<string, BookingDetails> {
+  return Object.fromEntries(Object.entries(bookings)
+    .filter(([, booking]) => booking.booked && (booking.date || booking.url))
+    .map(([id, booking]) => [id, { ...(booking.date ? { date: booking.date } : {}), ...(booking.url ? { url: booking.url } : {}) }]));
 }
 
 function isValidUsername(username: string): boolean {
@@ -66,13 +76,17 @@ function isBookingSyncResponse(value: unknown): value is BookingSyncResponse {
   return (
     isRecord(value) &&
     Array.isArray(value.bookedFilmIds) &&
-    value.bookedFilmIds.every((id) => typeof id === "string")
+    value.bookedFilmIds.every((id) => typeof id === "string") &&
+    isRecord(value.bookingDetails) &&
+    Object.values(value.bookingDetails).every((details) => isRecord(details) &&
+      (details.date === undefined || typeof details.date === "string") &&
+      (details.url === undefined || typeof details.url === "string"))
   );
 }
 
 async function requestBookingSync(
   request: Record<string, unknown>,
-): Promise<string[]> {
+): Promise<BookingSyncResponse> {
   const response = await fetch("/api/bookings", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -97,7 +111,7 @@ async function requestBookingSync(
   if (!isBookingSyncResponse(payload)) {
     throw new Error("Booking sync returned data in an unexpected format.");
   }
-  return payload.bookedFilmIds;
+  return payload;
 }
 
 function bookedFilmIds(bookings: Bookings): string[] {
@@ -106,20 +120,18 @@ function bookedFilmIds(bookings: Bookings): string[] {
     .map(([filmId]) => filmId);
 }
 
-function bookingsFromFilmIds(filmIds: string[]): Bookings {
+function bookingsFromSync({ bookedFilmIds, bookingDetails: details }: BookingSyncResponse): Bookings {
   const updatedAt = new Date().toISOString();
   return Object.fromEntries(
-    filmIds.map((filmId) => [filmId, { booked: true, updatedAt }]),
+    bookedFilmIds.map((filmId) => [filmId, { booked: true, updatedAt, ...details[filmId] }]),
   );
 }
 
-function mergeBookings(bookings: Bookings, filmIds: string[]): Bookings {
+function mergeBookings(bookings: Bookings, response: BookingSyncResponse): Bookings {
   const merged = { ...bookings };
   const updatedAt = new Date().toISOString();
-  for (const filmId of filmIds) {
-    if (!merged[filmId]?.booked) {
-      merged[filmId] = { booked: true, updatedAt };
-    }
+  for (const filmId of response.bookedFilmIds) {
+    merged[filmId] = { ...merged[filmId], booked: true, updatedAt, ...response.bookingDetails[filmId] };
   }
   return merged;
 }
@@ -207,7 +219,9 @@ function isBookings(value: unknown): value is Bookings {
       "booked" in booking &&
       typeof booking.booked === "boolean" &&
       "updatedAt" in booking &&
-      typeof booking.updatedAt === "string",
+      typeof booking.updatedAt === "string" &&
+      (!("date" in booking) || typeof booking.date === "string") &&
+      (!("url" in booking) || typeof booking.url === "string"),
   );
 }
 
@@ -220,6 +234,14 @@ function formatDate(value: string): string {
     day: "numeric",
     month: "long",
     year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(`${value}T12:00:00Z`));
+}
+
+function formatBookingDate(value: string): string {
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "long",
     timeZone: "UTC",
   }).format(new Date(`${value}T12:00:00Z`));
 }
@@ -341,10 +363,16 @@ function App() {
   const [bookingSyncBusy, setBookingSyncBusy] = useState(false);
   const [bookingSyncError, setBookingSyncError] = useState("");
   const [bookingSyncNotice, setBookingSyncNotice] = useState("");
+  const [bookingDetailsFilmId, setBookingDetailsFilmId] = useState<string | null>(null);
+  const [bookingDetailsIsEdit, setBookingDetailsIsEdit] = useState(false);
+  const [bookingDate, setBookingDate] = useState("");
+  const [bookingUrl, setBookingUrl] = useState("");
+  const [bookingDetailsPromptDisabled, setBookingDetailsPromptDisabled] = useState(false);
   const [storageError, setStorageError] = useState("");
   const [fetchedAt, setFetchedAt] = useState("");
   const usernameInput = useRef<HTMLInputElement>(null);
   const bookingSyncDialog = useRef<HTMLDialogElement>(null);
+  const bookingDetailsDialog = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
     const dialog = bookingSyncDialog.current;
@@ -352,6 +380,13 @@ function App() {
     if (bookingSyncOpen && !dialog.open) dialog.showModal();
     if (!bookingSyncOpen && dialog.open) dialog.close();
   }, [bookingSyncOpen]);
+
+  useEffect(() => {
+    const dialog = bookingDetailsDialog.current;
+    if (!dialog) return;
+    if (bookingDetailsFilmId && !dialog.open) dialog.showModal();
+    if (!bookingDetailsFilmId && dialog.open) dialog.close();
+  }, [bookingDetailsFilmId]);
 
   useEffect(() => {
     if (!storageError) return;
@@ -422,6 +457,7 @@ function App() {
       let restoredBookings: Bookings = {};
       let savedSyncCode = "";
       let syncPromptDismissed = false;
+      let detailsPromptDisabled = false;
       try {
         const savedBookings = localStorage.getItem(getStorageKey(nextUsername));
         const parsed: unknown = savedBookings ? JSON.parse(savedBookings) : {};
@@ -442,6 +478,10 @@ function App() {
         restoredBookings,
         result.watchlistFilmIds,
       );
+
+      try {
+        detailsPromptDisabled = localStorage.getItem(`watch-it-when:booking-details-prompt-disabled:${nextUsername.toLowerCase()}`) === "true";
+      } catch { /* Keep prompting if the preference cannot be read. */ }
 
       try {
         syncPromptDismissed =
@@ -477,13 +517,13 @@ function App() {
           );
         } else {
           try {
-            const remoteFilmIds = await requestBookingSync({
+            const remoteBookings = await requestBookingSync({
               action: "reconcile",
               username: nextUsername,
               code: savedSyncCode,
               watchlistFilmIds: result.watchlistFilmIds,
             });
-            restoredBookings = bookingsFromFilmIds(remoteFilmIds);
+            restoredBookings = bookingsFromSync(remoteBookings);
             setBookingSyncError("");
           } catch (cause) {
             setBookingSyncOpen(true);
@@ -502,6 +542,7 @@ function App() {
       setBookingSyncPromptDismissed(
         syncPromptDismissed || Boolean(savedSyncCode),
       );
+      setBookingDetailsPromptDisabled(detailsPromptDisabled);
       setUsername(nextUsername);
       setUsernameDraft(nextUsername);
       setFilms(result.films);
@@ -579,13 +620,14 @@ function App() {
     setBookingSyncError("");
     setBookingSyncNotice("");
     try {
-      const filmIds = await requestBookingSync({
+      const synced = await requestBookingSync({
         action: "create",
         username,
         code,
         filmIds: bookedFilmIds(bookings),
+        bookingDetails: bookingDetails(bookings),
       });
-      setBookings(mergeBookings(bookings, filmIds));
+      setBookings(mergeBookings(bookings, synced));
       storeSyncCode(code);
       setBookingSyncOpen(true);
       setBookingSyncNotice(
@@ -617,13 +659,14 @@ function App() {
     setBookingSyncError("");
     setBookingSyncNotice("");
     try {
-      const filmIds = await requestBookingSync({
+      const synced = await requestBookingSync({
         action: "connect",
         username,
         code,
         filmIds: bookedFilmIds(bookings),
+        bookingDetails: bookingDetails(bookings),
       });
-      setBookings(mergeBookings(bookings, filmIds));
+      setBookings(mergeBookings(bookings, synced));
       storeSyncCode(code);
       setBookingSyncCodeInput("");
       setBookingSyncNotice("Bookings connected and merged with this browser.");
@@ -684,15 +727,7 @@ function App() {
     }
   }
 
-  function toggleBooked(filmId: string) {
-    const booked = !bookings[filmId]?.booked;
-    setBookings((current) => ({
-      ...current,
-      [filmId]: {
-        booked,
-        updatedAt: new Date().toISOString(),
-      },
-    }));
+  function syncBooking(filmId: string, booked: boolean, details: BookingDetails = {}) {
     if (bookingSyncCode && username) {
       setBookingSyncError("");
       void requestBookingSync({
@@ -701,6 +736,7 @@ function App() {
         code: bookingSyncCode,
         filmId,
         booked,
+        details,
       }).catch((cause: unknown) => {
         setBookingSyncOpen(true);
         setBookingSyncError(
@@ -710,6 +746,53 @@ function App() {
         );
       });
     }
+  }
+
+  function toggleBooked(filmId: string) {
+    const booked = !bookings[filmId]?.booked;
+    setBookings((current) => ({ ...current,
+      [filmId]: { booked, updatedAt: new Date().toISOString() },
+    }));
+    if (booked && !bookingDetailsPromptDisabled) {
+      setBookingDate("");
+      setBookingUrl("");
+      setBookingDetailsIsEdit(false);
+      setBookingDetailsFilmId(filmId);
+    } else {
+      syncBooking(filmId, booked);
+    }
+  }
+
+  function openBookingDetails(filmId: string) {
+    setBookingDate(bookings[filmId]?.date ?? "");
+    setBookingUrl(bookings[filmId]?.url ?? "");
+    setBookingDetailsIsEdit(true);
+    setBookingDetailsFilmId(filmId);
+  }
+
+  function finishBookingDetails(details: BookingDetails) {
+    if (!bookingDetailsFilmId) return;
+    const filmId = bookingDetailsFilmId;
+    const clean = { ...(details.date ? { date: details.date } : {}), ...(details.url ? { url: details.url } : {}) };
+    setBookings((current) => ({ ...current,
+      [filmId]: { booked: true, updatedAt: new Date().toISOString(), ...clean },
+    }));
+    setBookingDetailsFilmId(null);
+    syncBooking(filmId, true, clean);
+  }
+
+  function cancelBookingDetails() {
+    if (!bookingDetailsFilmId) return;
+    if (!bookingDetailsIsEdit) syncBooking(bookingDetailsFilmId, true);
+    setBookingDetailsFilmId(null);
+  }
+
+  function disableBookingDetailsPrompt() {
+    setBookingDetailsPromptDisabled(true);
+    try {
+      localStorage.setItem(`watch-it-when:booking-details-prompt-disabled:${username.toLowerCase()}`, "true");
+    } catch { /* The preference remains active for this visit. */ }
+    cancelBookingDetails();
   }
 
   const bookedCount = films.filter((film) => bookings[film.id]?.booked).length;
@@ -798,26 +881,26 @@ function App() {
             </div>
           </section>
           <div className="header-links">
-            {username && (
-              <a
-                className="letterboxd-link"
-                href="https://www.imdb.com/calendar/?region=GB"
-                target="_blank"
-                rel="noreferrer"
-              >
-                UK RELEASES ON IMDB
-                <Icon name="arrow" />
-              </a>
-            )}
             <a
               className="letterboxd-link"
-              href={`https://letterboxd.com/${encodeURIComponent(username)}/watchlist/`}
+              href="https://www.imdb.com/calendar/?region=GB"
               target="_blank"
               rel="noreferrer"
             >
-              WATCHLIST ON LETTERBOXD
+              UK RELEASES ON IMDB
               <Icon name="arrow" />
             </a>
+            {username && (
+              <a
+                className="letterboxd-link"
+                href={`https://letterboxd.com/${encodeURIComponent(username)}/watchlist/`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                WATCHLIST ON LETTERBOXD
+                <Icon name="arrow" />
+              </a>
+            )}
           </div>
         </header>
 
@@ -940,6 +1023,10 @@ function App() {
             <div className="film-grid">
               {visibleFilms.map((film, index) => {
                 const booking = bookings[film.id]?.booked ?? false;
+                const bookedDate = bookings[film.id]?.date;
+                const bookingLabel = bookedDate
+                  ? formatBookingDate(bookedDate)
+                  : "Tickets booked";
                 const hasUpcomingUkRelease = film.releaseDates.some(
                   (release) =>
                     release.market === "uk" &&
@@ -1016,11 +1103,6 @@ function App() {
                           </>
                         )}
                       </div>
-                      {booking && (
-                        <span className="booked-ribbon">
-                          <Icon name="ticket" /> BOOKED
-                        </span>
-                      )}
                     </div>
                     <div className="film-info">
                       <div className="film-title-row">
@@ -1075,19 +1157,42 @@ function App() {
                         )}
                       </p>
                       <div className="film-actions">
-                        <button
-                          className={
-                            booking
-                              ? "booking-button is-booked"
-                              : "booking-button"
-                          }
-                          type="button"
-                          onClick={() => toggleBooked(film.id)}
-                          aria-pressed={booking}
-                        >
-                          <Icon name="ticket" />
-                          {booking ? "Tickets booked" : "Mark as booked"}
-                        </button>
+                        {!booking ? (
+                          <button
+                            className="booking-button"
+                            type="button"
+                            onClick={() => toggleBooked(film.id)}
+                          >
+                            <Icon name="ticket" />
+                            Mark as booked
+                          </button>
+                        ) : bookings[film.id]?.url ? (
+                          <a
+                            className="booking-button is-booked booking-confirmation-button"
+                            href={bookings[film.id].url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label={`${bookingLabel}. Open booking confirmation for ${film.title}`}
+                          >
+                            {bookingLabel}
+                            <Icon name="arrow" />
+                          </a>
+                        ) : (
+                          <span className="booking-button is-booked booking-status">
+                            <Icon name="ticket" />
+                            {bookingLabel}
+                          </span>
+                        )}
+                        {booking && (
+                          <div className="booking-management-actions">
+                            <button className="booking-details-edit" type="button" onClick={() => openBookingDetails(film.id)}>
+                              Edit
+                            </button>
+                            <button className="booking-details-edit" type="button" onClick={() => toggleBooked(film.id)} aria-label={`Cancel booking for ${film.title}`}>
+                              Cancel
+                            </button>
+                          </div>
+                        )}
                         {!booking && hasUpcomingUkRelease && (
                           <a
                             className="booking-link"
@@ -1272,6 +1377,36 @@ function App() {
           </div>
         </footer>
       </main>
+      <dialog
+        ref={bookingDetailsDialog}
+        className="booking-sync-panel booking-details-dialog"
+        aria-labelledby="booking-details-dialog-title"
+        onCancel={(event) => { event.preventDefault(); cancelBookingDetails(); }}
+      >
+        <div className="booking-sync-dialog-heading">
+          <h2 id="booking-details-dialog-title">
+            Booking details for {films.find((film) => film.id === bookingDetailsFilmId)?.title}
+          </h2>
+        </div>
+        <form className="booking-details-form" onSubmit={(event) => {
+          event.preventDefault();
+          finishBookingDetails({ date: bookingDate, url: bookingUrl.trim() });
+        }}>
+          <label htmlFor="booking-date">Date</label>
+          <input id="booking-date" type="date" value={bookingDate} onChange={(event) => setBookingDate(event.target.value)} />
+          <label htmlFor="booking-url">Booking confirmation URL</label>
+          <input id="booking-url" type="url" maxLength={2048} placeholder="https://…" value={bookingUrl} onChange={(event) => setBookingUrl(event.target.value)} />
+          <div className="booking-details-actions">
+            <button className="booking-sync-primary" type="submit">Save</button>
+            <button type="button" onClick={cancelBookingDetails}>
+              {bookingDetailsIsEdit ? "Cancel" : "Not now"}
+            </button>
+            {!bookingDetailsIsEdit && (
+              <button type="button" onClick={disableBookingDetailsPrompt}>Don’t show again</button>
+            )}
+          </div>
+        </form>
+      </dialog>
       <section className="stats" aria-label="Watchlist summary">
         <div className="stats-inner" role="group" aria-label="Filter films">
           <button
@@ -1294,7 +1429,7 @@ function App() {
             aria-pressed={filter === "upcoming"}
             onClick={() => setFilter("upcoming")}
           >
-            <span className="stat-label">ON THE WAY</span>
+            <span className="stat-label">UPCOMING</span>
             <span className="stat-value">
               {loading ? "—" : upcomingCount.toString().padStart(2, "0")}
             </span>
@@ -1310,7 +1445,7 @@ function App() {
             aria-pressed={filter === "recent"}
             onClick={() => setFilter("recent")}
           >
-            <span className="stat-label">JUST RELEASED</span>
+            <span className="stat-label">RELEASED</span>
             <span className="stat-value">
               {loading ? "—" : recentCount.toString().padStart(2, "0")}
             </span>
@@ -1328,7 +1463,7 @@ function App() {
             aria-pressed={filter === "booked"}
             onClick={() => setFilter("booked")}
           >
-            <span className="stat-label">YOUR SEATS</span>
+            <span className="stat-label">BOOKED</span>
             <span className="stat-value">
               {bookedCount.toString().padStart(2, "0")}
             </span>

@@ -10,8 +10,8 @@ For years I maintained a list in my Notes app; upcoming releases split up by yea
 
 - The server reads the public Letterboxd watchlist and the film pages’ UK release tables. Premiere dates are excluded; theatrical-limited dates are shown as previews alongside theatrical dates. Upcoming films and films released in the previous 30 days are shown, sorted by release date.
 - Watchlist data is cached in memory for 15 minutes; using the Sync button refreshes it immediately.
-- The Letterboxd username and ticket-booking flags are initally stored in the browser’s local storage. On later visits, the app restores the username and syncs its watchlist automatically. When a successful sync confirms that a film has been removed from the Letterboxd watchlist, its saved booking status is removed.
-- Users can optionally sync booked film IDs across devices using a generated private three-word phrase. The phrase is stored in the browser and is required to access that username’s booking set from another device. The Redis database stores only booked film IDs, not store the Letterboxd passwords or watchlists, and entries expire 30 days after the most recent sync or booking update.
+- The Letterboxd username, ticket-booking flags, and optional screening dates and confirmation URLs are initially stored in the browser’s local storage. Marking a film as booked offers a details dialog with **Save**, **Not now**, and **Don’t show again** choices. Booked films have an **Edit details** button. On later visits, the app restores the username and syncs its watchlist automatically. When a successful sync confirms that a film has been removed from the Letterboxd watchlist, its saved booking status and details are removed.
+- Users can optionally sync booked films and their details across devices using a generated private three-word phrase. The phrase is stored in the browser and is required to access that username’s booking set from another device. Redis stores booked film IDs and any dates or confirmation URLs, but no Letterboxd passwords or watchlists. Entries expire 30 days after the most recent sync or booking update.
 - Enable it from **Sync across devices**, save the generated phrase, then enter the same Letterboxd username and phrase on another device. Existing local and server bookings are merged when connecting. Anyone with both the Letterboxd username and sync code can access and change that user's synced bookings, so keep the code private. If the code is lost from all devices, the server-side bookings cannot be recovered elsewhere.
 - Unbooked films with a UK release date in the next 30 days have a ticket-search link that opens a Google search scoped to Cineworld film pages.
 - The watchlist must be public. Letterboxd may rate-limit or change its page markup; if a sync fails, the app shows the error so you can retry later.
@@ -20,7 +20,7 @@ For years I maintained a list in my Notes app; upcoming releases split up by yea
 
 Two main things I'd like to develop in future, both related to personalisation:
 
-- Booking links. At the moment they just search for Cineworld, just because that's what I use: despite their occasional annoyances (such as an unsearchable website), they do have a very well-priced Unlimited program. In time, I'll add an option to switch to either generic showtime cites or other specific cinemas.
+- Find tickets links. At the moment they just search for Cineworld, just because that's what I use: despite their occasional annoyances (such as an unsearchable website), they do have a very well-priced Unlimited program. In time, I'll add an option to switch to either generic showtime cites or other specific cinemas.
 - Countries. Similar to the cinema, it's UK-only right now (switching to US release dates when UK ones haven't been announced), but only because this is where I live. Plan in future is to add a choice of countries.
 
 ## Running locally
