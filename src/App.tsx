@@ -384,7 +384,10 @@ function App() {
   useEffect(() => {
     const dialog = bookingDetailsDialog.current;
     if (!dialog) return;
-    if (bookingDetailsFilmId && !dialog.open) dialog.showModal();
+    if (bookingDetailsFilmId && !dialog.open) {
+      dialog.showModal();
+      dialog.querySelector<HTMLElement>("#booking-details-dialog-title")?.focus({ preventScroll: true });
+    }
     if (!bookingDetailsFilmId && dialog.open) dialog.close();
   }, [bookingDetailsFilmId]);
 
@@ -1384,7 +1387,7 @@ function App() {
         onCancel={(event) => { event.preventDefault(); cancelBookingDetails(); }}
       >
         <div className="booking-sync-dialog-heading">
-          <h2 id="booking-details-dialog-title">
+          <h2 id="booking-details-dialog-title" tabIndex={-1} autoFocus>
             Booking details for {films.find((film) => film.id === bookingDetailsFilmId)?.title}
           </h2>
         </div>

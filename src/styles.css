@@ -794,6 +794,14 @@ input:focus-visible {
   font-family: "DM Sans", sans-serif;
 }
 
+.booking-details-form input[type="date"] {
+  padding-right: 14px;
+}
+
+.booking-details-form input[type="date"]::-webkit-calendar-picker-indicator {
+  margin-right: 2px;
+}
+
 .booking-details-actions {
   display: flex;
   flex-wrap: wrap;
