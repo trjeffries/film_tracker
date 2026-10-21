@@ -386,7 +386,7 @@ function App() {
     if (!dialog) return;
     if (bookingDetailsFilmId && !dialog.open) {
       dialog.showModal();
-      dialog.querySelector<HTMLElement>("#booking-details-dialog-title")?.focus({ preventScroll: true });
+      dialog.focus({ preventScroll: true });
     }
     if (!bookingDetailsFilmId && dialog.open) dialog.close();
   }, [bookingDetailsFilmId]);
@@ -1383,11 +1383,13 @@ function App() {
       <dialog
         ref={bookingDetailsDialog}
         className="booking-sync-panel booking-details-dialog"
+        tabIndex={-1}
+        autoFocus
         aria-labelledby="booking-details-dialog-title"
         onCancel={(event) => { event.preventDefault(); cancelBookingDetails(); }}
       >
         <div className="booking-sync-dialog-heading">
-          <h2 id="booking-details-dialog-title" tabIndex={-1} autoFocus>
+          <h2 id="booking-details-dialog-title">
             Booking details for {films.find((film) => film.id === bookingDetailsFilmId)?.title}
           </h2>
         </div>
@@ -1396,7 +1398,9 @@ function App() {
           finishBookingDetails({ date: bookingDate, url: bookingUrl.trim() });
         }}>
           <label htmlFor="booking-date">Date</label>
-          <input id="booking-date" type="date" value={bookingDate} onChange={(event) => setBookingDate(event.target.value)} />
+          <div className="booking-date-field">
+            <input id="booking-date" type="date" value={bookingDate} onChange={(event) => setBookingDate(event.target.value)} />
+          </div>
           <label htmlFor="booking-url">Booking confirmation URL</label>
           <input id="booking-url" type="url" maxLength={2048} placeholder="https://…" value={bookingUrl} onChange={(event) => setBookingUrl(event.target.value)} />
           <div className="booking-details-actions">

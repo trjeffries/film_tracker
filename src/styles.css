@@ -751,6 +751,10 @@ input:focus-visible {
   font-size: 12px;
 }
 
+.booking-details-dialog:focus {
+  outline: none;
+}
+
 .booking-details-dialog .booking-sync-dialog-heading h2 {
   font-size: 18px;
   font-weight: 600;
@@ -794,12 +798,34 @@ input:focus-visible {
   font-family: "DM Sans", sans-serif;
 }
 
-.booking-details-form input[type="date"] {
-  padding-right: 14px;
+.booking-date-field {
+  display: flex;
+  min-width: 0;
+  padding: 8px 12px;
+  overflow: hidden;
+  border: 1px solid rgba(216, 225, 224, 0.16);
+  border-radius: 5px;
+  background: #090c10;
 }
 
-.booking-details-form input[type="date"]::-webkit-calendar-picker-indicator {
-  margin-right: 2px;
+.booking-date-field:focus-within {
+  outline: 2px solid var(--green);
+  outline-offset: 3px;
+}
+
+.booking-details-form input[type="date"] {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.booking-date-field input:focus-visible {
+  outline: none;
 }
 
 .booking-details-actions {
