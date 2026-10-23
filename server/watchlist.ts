@@ -223,10 +223,16 @@ async function getFilmDetails(film: {
   const releaseDates = ukReleaseDates.length > 0
     ? ukReleaseDates
     : theatricalReleaseDates(html, "us");
+  const previewRelease = releaseDates.find(({ type }) => type === "previews");
+  const theatricalRelease = releaseDates.find(({ type }) => type === "theatrical");
+  const primaryRelease =
+    previewRelease && theatricalRelease && previewRelease.date < todayIso
+      ? theatricalRelease
+      : (previewRelease ?? theatricalRelease ?? releaseDates[0]);
   const releaseStatus: WatchlistFilm["releaseStatus"] | null =
-    releaseDates.some(({ date }) => date >= todayIso)
+    primaryRelease && primaryRelease.date > todayIso
       ? "upcoming"
-      : releaseDates.some(({ date }) => date >= cutoffIso && date < todayIso)
+      : primaryRelease && primaryRelease.date >= cutoffIso
         ? "recent"
         : releaseDates.length === 0 && film.year !== null && film.year >= todayYear
           ? "upcoming"

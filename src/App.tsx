@@ -246,6 +246,24 @@ function formatBookingDate(value: string): string {
   }).format(new Date(`${value}T12:00:00Z`));
 }
 
+function primaryReleaseForFilm(film: Film, today: string) {
+  const releaseMarket = film.releaseDates[0]?.market;
+  const previewRelease = film.releaseDates.find(
+    (release) => release.market === releaseMarket && release.type === "previews",
+  );
+  const theatricalRelease = film.releaseDates.find(
+    (release) => release.market === releaseMarket && release.type === "theatrical",
+  );
+  return previewRelease && theatricalRelease && previewRelease.date < today
+    ? theatricalRelease
+    : (previewRelease ?? theatricalRelease ?? film.releaseDates[0]);
+}
+
+function releaseStatusForFilm(film: Film, today: string): "upcoming" | "recent" {
+  const primaryRelease = primaryReleaseForFilm(film, today);
+  return primaryRelease && primaryRelease.date <= today ? "recent" : "upcoming";
+}
+
 function getUkToday(): string {
   const parts = new Intl.DateTimeFormat("en-GB", {
     timeZone: "Europe/London",
@@ -798,14 +816,14 @@ function App() {
     cancelBookingDetails();
   }
 
+  const today = getUkToday();
   const bookedCount = films.filter((film) => bookings[film.id]?.booked).length;
   const upcomingCount = films.filter(
-    (film) => film.releaseStatus === "upcoming",
+    (film) => releaseStatusForFilm(film, today) === "upcoming",
   ).length;
   const recentCount = films.filter(
-    (film) => film.releaseStatus === "recent",
+    (film) => releaseStatusForFilm(film, today) === "recent",
   ).length;
-  const today = getUkToday();
   const bookingWindowStart = new Date(`${today}T12:00:00Z`);
   bookingWindowStart.setUTCDate(bookingWindowStart.getUTCDate() - 30);
   const bookingWindowStartIso = bookingWindowStart.toISOString().slice(0, 10);
@@ -819,14 +837,14 @@ function App() {
       const matchesFilter =
         filter === "all" ||
         (filter === "booked" && bookings[film.id]?.booked) ||
-        film.releaseStatus === filter;
+        releaseStatusForFilm(film, today) === filter;
       const matchesSearch =
         !query ||
         film.title.toLowerCase().includes(query) ||
         String(film.year ?? "").includes(query);
       return matchesFilter && matchesSearch;
     });
-  }, [bookings, films, filter, search]);
+  }, [bookings, films, filter, search, today]);
 
   return (
     <>
@@ -1036,25 +1054,7 @@ function App() {
                     release.date >= bookingWindowStartIso &&
                     release.date <= bookingWindowEndIso,
                 );
-                const releaseMarket = film.releaseDates[0]?.market;
-                const previewRelease = film.releaseDates.find(
-                  (release) =>
-                    release.market === releaseMarket &&
-                    release.type === "previews",
-                );
-                const theatricalRelease = film.releaseDates.find(
-                  (release) =>
-                    release.market === releaseMarket &&
-                    release.type === "theatrical",
-                );
-                const primaryRelease =
-                  previewRelease &&
-                  theatricalRelease &&
-                  previewRelease.date < today
-                    ? theatricalRelease
-                    : (previewRelease ??
-                      theatricalRelease ??
-                      film.releaseDates[0]);
+                const primaryRelease = primaryReleaseForFilm(film, today);
                 const hasTheatricalRelease = film.releaseDates.some(
                   (release) =>
                     release.market === primaryRelease?.market &&
