@@ -89,8 +89,11 @@ input:focus-visible {
   border-bottom: 1px solid rgba(183, 230, 167, 0.35);
 }
 
-.topbar > .brand {
-  justify-self: start;
+.header-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .topbar > .eyebrow {
@@ -140,6 +143,10 @@ input:focus-visible {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+}
+
+.watchlist-link {
+  margin-left: auto;
 }
 
 .letterboxd-link:hover {
@@ -586,7 +593,7 @@ input:focus-visible {
   font-size: 11px !important;
 }
 
-.booking-sync-manage {
+.settings-button {
   min-height: 28px;
   padding: 0 9px;
   font-size: 9px !important;
@@ -646,6 +653,13 @@ input:focus-visible {
   margin: 0;
   color: #e1e6dd;
   font-size: 14px;
+  font-weight: 500;
+}
+
+.booking-sync-section-title {
+  margin: 0;
+  color: #dce3d8;
+  font-size: 11px;
   font-weight: 500;
 }
 
@@ -1218,56 +1232,15 @@ input:focus-visible {
 }
 
 .footer {
-  display: grid;
-  align-items: center;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 18px;
+  padding: 12px 0;
   border-top: 1px solid var(--line);
-  color: #a6afad;
-  font-family: var(--mono);
-  font-size: 8px;
-  letter-spacing: 0.09em;
-}
-
-.footer-column {
-  display: grid;
-  gap: 7px;
-}
-
-.footer a {
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  width: fit-content;
-  color: inherit;
-  text-decoration: none;
-  text-align: right;
-  text-underline-offset: 3px;
-}
-
-.footer a svg {
-  width: 13px;
-  flex: 0 0 auto;
-}
-
-.footer a:hover {
-  color: var(--green);
-  text-decoration: underline;
 }
 
 .footer-links {
-  justify-self: end;
-  text-align: right;
-}
-
-.footer .booking-sync {
-  grid-column: 1;
-  grid-row: 1;
-}
-
-.footer .footer-links {
-  grid-column: 2;
-  grid-row: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .app-shell {
@@ -1480,21 +1453,6 @@ input:focus-visible {
   .film-actions {
     margin-top: auto;
     padding: 8px 0;
-  }
-
-  .footer {
-    align-items: flex-start;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    padding: 12px 0;
-    font-size: 7px;
-  }
-
-  .footer a {
-    gap: 6px;
-  }
-
-  .footer a svg {
-    width: 11px;
   }
 
   .app-shell {
