@@ -1198,6 +1198,8 @@ function App() {
           ) : (
             <div className="film-grid">
               {visibleFilms.map((film, index) => {
+                const isDigitalOnly = film.releaseDates.length > 0 &&
+                  film.releaseDates.every((release) => release.type === "digital");
                 const booking = bookings[film.id]?.booked ?? false;
                 const bookedDate = bookings[film.id]?.date;
                 const bookingLabel = bookedDate
@@ -1316,32 +1318,33 @@ function App() {
                           </span>
                         )}
                       </p>
-                      <div className="film-actions">
-                        {!booking ? (
-                          <button
-                            className="booking-button"
-                            type="button"
-                            onClick={() => toggleBooked(film.id)}
-                          >
-                            <Icon name="ticket" />
-                            Mark as booked
-                          </button>
-                        ) : bookings[film.id]?.url ? (
-                          <a
-                            className="booking-button is-booked booking-confirmation-button"
-                            href={bookings[film.id].url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            aria-label={`${bookingLabel}. Open booking confirmation for ${film.title}`}
-                          >
-                            {bookingLabel}
-                            <Icon name="arrow" />
-                          </a>
-                        ) : (
-                          <span className="booking-button is-booked booking-status">
-                            <Icon name="ticket" />
-                            {bookingLabel}
-                          </span>
+                      {!isDigitalOnly && (
+                        <div className="film-actions">
+                          {!booking ? (
+                            <button
+                              className="booking-button"
+                              type="button"
+                              onClick={() => toggleBooked(film.id)}
+                            >
+                              <Icon name="ticket" />
+                              Mark as booked
+                            </button>
+                          ) : bookings[film.id]?.url ? (
+                            <a
+                              className="booking-button is-booked booking-confirmation-button"
+                              href={bookings[film.id].url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              aria-label={`${bookingLabel}. Open booking confirmation for ${film.title}`}
+                            >
+                              {bookingLabel}
+                              <Icon name="arrow" />
+                            </a>
+                          ) : (
+                            <span className="booking-button is-booked booking-status">
+                              <Icon name="ticket" />
+                              {bookingLabel}
+                            </span>
                         )}
                         {booking && (
                           <div className="booking-management-actions">
@@ -1365,6 +1368,7 @@ function App() {
                           </a>
                         )}
                       </div>
+                      )}
                     </div>
                   </article>
                 );
