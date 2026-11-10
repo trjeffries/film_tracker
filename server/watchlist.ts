@@ -8,8 +8,9 @@ interface WatchlistFilm {
   posterUrl: string | null;
   releaseDates: Array<{
     date: string;
-    type: "previews" | "theatrical";
+    type: "previews" | "theatrical" | "digital";
     market: "uk" | "us";
+    service?: string;
   }>;
   releaseStatus: "upcoming" | "recent";
 }
@@ -134,16 +135,19 @@ function parseLetterboxdDate(value: string): string | null {
   return parsed.toISOString().slice(0, 10);
 }
 
-function theatricalReleaseDates(html: string, market: "uk" | "us"): Array<{
+function releaseDatesForMarket(html: string, market: "uk" | "us"): Array<{
   date: string;
-  type: "previews" | "theatrical";
+  type: "previews" | "theatrical" | "digital";
   market: "uk" | "us";
+  service?: string;
 }> {
   const $ = cheerio.load(html);
-  const dates = new Map<"previews" | "theatrical", Set<string>>([
-    ["previews", new Set()],
-    ["theatrical", new Set()],
-  ]);
+  const dates = new Map<string, {
+    date: string;
+    type: "previews" | "theatrical" | "digital";
+    market: "uk" | "us";
+    service?: string;
+  }>();
   const countryNames = market === "uk"
     ? ["united kingdom", "uk", "great britain"]
     : ["united states", "united states of america", "usa", "us"];
@@ -155,7 +159,9 @@ function theatricalReleaseDates(html: string, market: "uk" | "us"): Array<{
         ? "previews"
         : heading === "theatrical"
           ? "theatrical"
-          : null;
+          : heading === "digital"
+            ? "digital"
+              : null;
     if (!type) return;
 
     $(element)
@@ -163,23 +169,33 @@ function theatricalReleaseDates(html: string, market: "uk" | "us"): Array<{
       .first()
       .find("> .listitem")
       .each((_, row) => {
-        const countries = $(row)
-          .find(".release-country .name")
-          .toArray()
-          .map((country) => $(country).text().trim().toLowerCase());
-        if (!countries.some((country) => countryNames.includes(country))) {
-          return;
-        }
-
         const date = parseLetterboxdDate($(row).find(".date").first().text().trim());
-        if (date) dates.get(type)?.add(date);
+        if (!date) return;
+
+        $(row).find(".release-country").each((_, countryElement) => {
+          const name = $(countryElement).find(".name").first();
+          const country = name.text().trim().toLowerCase();
+          if (!countryNames.includes(country)) return;
+
+          const service = type === "digital"
+            ? (
+                $(countryElement).find(".release-note").first().text().trim() ||
+                name.attr("title") ||
+                ""
+              ).replace(/\s+/g, " ").trim()
+            : "";
+          const key = `${date}|${type}|${service.toLowerCase()}`;
+          dates.set(key, {
+            date,
+            type,
+            market,
+            ...(service ? { service } : {}),
+          });
+        });
       });
   });
 
-  return [...dates.entries()]
-    .flatMap(([type, values]) =>
-      [...values].sort().map((date) => ({ date, type, market })),
-    )
+  return [...dates.values()]
     .sort((left, right) => left.date.localeCompare(right.date));
 }
 
@@ -219,10 +235,10 @@ async function getFilmDetails(film: {
   if (film.year !== null && film.year < todayYear - 1) return null;
 
   const html = await fetchLetterboxd(new URL(film.path, letterboxdOrigin).toString());
-  const ukReleaseDates = theatricalReleaseDates(html, "uk");
+  const ukReleaseDates = releaseDatesForMarket(html, "uk");
   const releaseDates = ukReleaseDates.length > 0
     ? ukReleaseDates
-    : theatricalReleaseDates(html, "us");
+    : releaseDatesForMarket(html, "us");
   const previewRelease = releaseDates.find(({ type }) => type === "previews");
   const theatricalRelease = releaseDates.find(({ type }) => type === "theatrical");
   const primaryRelease =

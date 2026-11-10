@@ -9,8 +9,9 @@ interface Film {
   posterUrl: string | null;
   releaseDates: Array<{
     date: string;
-    type: "previews" | "theatrical";
+    type: "previews" | "theatrical" | "digital";
     market: "uk" | "us";
+    service?: string;
   }>;
   releaseStatus: "upcoming" | "recent";
 }
@@ -203,8 +204,11 @@ function isWatchlistResponse(value: unknown): value is WatchlistResponse {
           (release) =>
             isRecord(release) &&
             typeof release.date === "string" &&
-            (release.type === "previews" || release.type === "theatrical") &&
-            (release.market === "uk" || release.market === "us"),
+            (release.type === "previews" ||
+              release.type === "theatrical" ||
+              release.type === "digital") &&
+            (release.market === "uk" || release.market === "us") &&
+            (release.service === undefined || typeof release.service === "string"),
         ),
     )
   );
@@ -1288,16 +1292,18 @@ function App() {
                                       ? "release-date is-released"
                                       : "release-date is-upcoming"
                                 }
-                                key={`${release.market}-${release.type}-${release.date}`}
+                                key={`${release.market}-${release.type}-${release.date}-${release.service ?? ""}`}
                               >
                                 <strong>
                                   {release.market === "us"
                                     ? "US release"
-                                    : release.type === "previews"
-                                      ? hasTheatricalRelease
-                                        ? "Previews"
-                                        : "Limited"
-                                      : "Theatrical"}
+                                    : release.type === "digital"
+                                      ? release.service || "Digital"
+                                      : release.type === "previews"
+                                        ? hasTheatricalRelease
+                                          ? "Previews"
+                                          : "Limited"
+                                        : "Theatrical"}
                                 </strong>{" "}
                                 {formatDate(release.date)}
                               </span>
