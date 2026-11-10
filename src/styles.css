@@ -663,6 +663,37 @@ input:focus-visible {
   font-weight: 500;
 }
 
+.sort-order-setting {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin: 0 0 4px;
+  padding: 0 0 14px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.sort-order-setting legend {
+  margin-bottom: 8px;
+  padding: 0;
+  color: #dce3d8;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.sort-order-setting label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #dce3d8;
+  cursor: pointer;
+}
+
+.sort-order-setting input {
+  margin: 0;
+  accent-color: var(--green);
+}
+
 .booking-sync-dialog-heading button {
   min-height: 28px;
   padding: 0 9px;
@@ -726,15 +757,25 @@ input:focus-visible {
   user-select: all;
 }
 
+.booking-sync-copy {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0 !important;
+}
+
+.booking-sync-copy svg {
+  width: 16px;
+  height: 16px;
+}
+
 .booking-sync-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 7px;
-}
-
-.booking-sync-code + .booking-sync-actions button:first-child {
-  order: 1;
-  margin-left: auto;
 }
 
 .booking-sync-error {

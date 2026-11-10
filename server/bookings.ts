@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { isUserSettings, type UserSettings } from "../src/userSettings.js";
 
 const maximumBookedFilms = 3000;
 const maximumWatchlistFilms = 3000;
@@ -8,6 +9,7 @@ const syncCodePattern =
 const filmIdPattern = /^\/film\/[a-z0-9-]+\/$/i;
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 type BookingDetails = { date?: string; url?: string };
+type SortOrder = "release" | "booking";
 
 export class BookingStoreError extends Error {
   constructor(
@@ -25,13 +27,18 @@ type BookingSyncRequest =
       code: string;
       filmIds: string[];
       bookingDetails: Record<string, BookingDetails>;
+      sortOrder?: SortOrder;
+      settings: UserSettings;
     }
   | {
       action: "reconcile";
       username: string;
       code: string;
       watchlistFilmIds: string[];
+      sortOrder?: SortOrder;
+      settings: UserSettings;
     }
+  | { action: "settings"; username: string; code: string; settings: UserSettings }
   | { action: "load" | "delete"; username: string; code: string }
   | {
       action: "set";
@@ -89,13 +96,33 @@ function parseRequest(value: unknown): BookingSyncRequest {
       action !== "load" &&
     action !== "delete" &&
     action !== "set" &&
-    action !== "reconcile") ||
+    action !== "reconcile" &&
+    action !== "settings") ||
     typeof username !== "string" ||
     !/^[A-Za-z0-9_-]{1,30}$/.test(username) ||
     typeof code !== "string" ||
     !syncCodePattern.test(code)
   ) {
     throw new BookingStoreError("Invalid booking sync request.", 400);
+  }
+
+  const sortOrder = value.sortOrder;
+  if (sortOrder !== undefined && sortOrder !== "release" && sortOrder !== "booking") {
+    throw new BookingStoreError("Invalid sort order.", 400);
+  }
+  if (value.settings !== undefined && !isUserSettings(value.settings)) {
+    throw new BookingStoreError("Invalid settings.", 400);
+  }
+  const incoming = (value.settings ?? {}) as UserSettings;
+  const settings: UserSettings = {
+    ...(sortOrder ? { sortOrder } : {}),
+    ...(incoming.sortOrder !== undefined ? { sortOrder: incoming.sortOrder } : {}),
+    ...(incoming.bookingDetailsPromptDisabled !== undefined ? { bookingDetailsPromptDisabled: incoming.bookingDetailsPromptDisabled } : {}),
+    ...(incoming.bookingPromptChoiceMade !== undefined ? { bookingPromptChoiceMade: incoming.bookingPromptChoiceMade } : {}),
+  };
+  if (action === "settings") {
+    if (Object.keys(settings).length === 0) throw new BookingStoreError("Choose a setting to update.", 400);
+    return { action, username, code, settings };
   }
 
   if (action === "create" || action === "connect") {
@@ -106,7 +133,7 @@ function parseRequest(value: unknown): BookingSyncRequest {
     if (validFilmIds.length !== filmIds.length) {
       throw new BookingStoreError("Invalid booked-film list.", 400);
     }
-    return { action, username, code, filmIds: validFilmIds, bookingDetails: parseDetailsMap(value.bookingDetails, validFilmIds) };
+    return { action, username, code, filmIds: validFilmIds, bookingDetails: parseDetailsMap(value.bookingDetails, validFilmIds), sortOrder, settings };
   }
 
   if (action === "reconcile") {
@@ -120,7 +147,7 @@ function parseRequest(value: unknown): BookingSyncRequest {
     if (validFilmIds.length !== value.watchlistFilmIds.length) {
       throw new BookingStoreError("Invalid watchlist film list.", 400);
     }
-    return { action, username, code, watchlistFilmIds: validFilmIds };
+    return { action, username, code, watchlistFilmIds: validFilmIds, sortOrder, settings };
   }
 
   if (action === "set") {
@@ -133,6 +160,34 @@ function parseRequest(value: unknown): BookingSyncRequest {
   return { action, username, code };
 }
 
+const settingsFunctionsScript = `
+  local function readSettings()
+    local value = redis.call('GET', KEYS[4])
+    if not value then return {} end
+    if value == 'release' or value == 'booking' then
+      return {sortOrder = value}
+    end
+    return cjson.decode(value)
+  end
+  local function mergeSettings(value, overwrite)
+    local settings = readSettings()
+    for key, setting in pairs(cjson.decode(value)) do
+      if overwrite or settings[key] == nil or (key == 'bookingPromptChoiceMade' and setting == true) then
+        settings[key] = setting
+      end
+    end
+    redis.call('SET', KEYS[4], cjson.encode(settings))
+  end
+`;
+
+const refreshVaultScript = `
+  redis.call('EXPIRE', KEYS[1], ${bookingExpirySeconds})
+  redis.call('EXPIRE', KEYS[2], ${bookingExpirySeconds})
+  redis.call('EXPIRE', KEYS[3], ${bookingExpirySeconds})
+  redis.call('EXPIRE', KEYS[4], ${bookingExpirySeconds})
+  return {redis.call('SMEMBERS', KEYS[2]), redis.call('HGETALL', KEYS[3]), redis.call('GET', KEYS[4])}
+`;
+
 const createVaultScript = `
   redis.call('SET', KEYS[1], '1')
   local count = tonumber(ARGV[1])
@@ -143,10 +198,10 @@ const createVaultScript = `
   for filmId, value in pairs(details) do
     redis.call('HSET', KEYS[3], filmId, cjson.encode(value))
   end
-  redis.call('EXPIRE', KEYS[1], ${bookingExpirySeconds})
-  redis.call('EXPIRE', KEYS[2], ${bookingExpirySeconds})
-  redis.call('EXPIRE', KEYS[3], ${bookingExpirySeconds})
-  return {redis.call('SMEMBERS', KEYS[2]), redis.call('HGETALL', KEYS[3])}
+  if ARGV[count + 3] ~= '' then
+    mergeSettings(ARGV[count + 3], false)
+  end
+  ${refreshVaultScript}
 `;
 
 const connectVaultScript = `
@@ -161,20 +216,17 @@ const connectVaultScript = `
   for filmId, value in pairs(details) do
     redis.call('HSETNX', KEYS[3], filmId, cjson.encode(value))
   end
-  redis.call('EXPIRE', KEYS[1], ${bookingExpirySeconds})
-  redis.call('EXPIRE', KEYS[2], ${bookingExpirySeconds})
-  redis.call('EXPIRE', KEYS[3], ${bookingExpirySeconds})
-  return {redis.call('SMEMBERS', KEYS[2]), redis.call('HGETALL', KEYS[3])}
+  if ARGV[count + 3] ~= '' then
+    mergeSettings(ARGV[count + 3], false)
+  end
+  ${refreshVaultScript}
 `;
 
 const loadVaultScript = `
   if redis.call('EXISTS', KEYS[1]) == 0 then
     return false
   end
-  redis.call('EXPIRE', KEYS[1], ${bookingExpirySeconds})
-  redis.call('EXPIRE', KEYS[2], ${bookingExpirySeconds})
-  redis.call('EXPIRE', KEYS[3], ${bookingExpirySeconds})
-  return {redis.call('SMEMBERS', KEYS[2]), redis.call('HGETALL', KEYS[3])}
+  ${refreshVaultScript}
 `;
 
 const reconcileVaultScript = `
@@ -193,17 +245,17 @@ const reconcileVaultScript = `
       redis.call('HDEL', KEYS[3], filmId)
     end
   end
-  redis.call('EXPIRE', KEYS[1], ${bookingExpirySeconds})
-  redis.call('EXPIRE', KEYS[2], ${bookingExpirySeconds})
-  redis.call('EXPIRE', KEYS[3], ${bookingExpirySeconds})
-  return {redis.call('SMEMBERS', KEYS[2]), redis.call('HGETALL', KEYS[3])}
+  if ARGV[count + 2] ~= '' then
+    mergeSettings(ARGV[count + 2], false)
+  end
+  ${refreshVaultScript}
 `;
 
 const deleteVaultScript = `
   if redis.call('EXISTS', KEYS[1]) == 0 then
     return false
   end
-  redis.call('DEL', KEYS[1], KEYS[2], KEYS[3])
+  redis.call('DEL', KEYS[1], KEYS[2], KEYS[3], KEYS[4])
   return {}
 `;
 
@@ -222,10 +274,15 @@ const setBookingScript = `
     redis.call('SREM', KEYS[2], ARGV[2])
     redis.call('HDEL', KEYS[3], ARGV[2])
   end
-  redis.call('EXPIRE', KEYS[1], ${bookingExpirySeconds})
-  redis.call('EXPIRE', KEYS[2], ${bookingExpirySeconds})
-  redis.call('EXPIRE', KEYS[3], ${bookingExpirySeconds})
-  return {redis.call('SMEMBERS', KEYS[2]), redis.call('HGETALL', KEYS[3])}
+  ${refreshVaultScript}
+`;
+
+const setSettingsScript = `
+  if redis.call('EXISTS', KEYS[1]) == 0 then
+    return false
+  end
+  mergeSettings(ARGV[1], true)
+  ${refreshVaultScript}
 `;
 
 async function runRedisScript(
@@ -250,7 +307,7 @@ async function runRedisScript(
         Authorization: `Bearer ${restToken}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(["EVAL", script, keys.length, ...keys, ...args]),
+      body: JSON.stringify(["EVAL", settingsFunctionsScript + script, keys.length, ...keys, ...args]),
       signal: AbortSignal.timeout(10_000),
     });
   } catch {
@@ -289,18 +346,26 @@ async function runRedisScript(
   return payload.result;
 }
 
-function getVaultKeys(username: string, code: string): [string, string, string] {
+function getVaultKeys(username: string, code: string): [string, string, string, string] {
   const digest = createHash("sha256")
     .update(username.toLowerCase())
     .update("\0")
     .update(code)
     .digest("hex");
   const tag = `{${digest}}`;
-  return [`watch-it-when:${tag}:vault`, `watch-it-when:${tag}:bookings`, `watch-it-when:${tag}:details`];
+  // Keep the legacy key so existing synced sort preferences migrate in place.
+  return [`watch-it-when:${tag}:vault`, `watch-it-when:${tag}:bookings`, `watch-it-when:${tag}:details`, `watch-it-when:${tag}:sort-order`];
 }
 
-function parseBookingResult(result: unknown): { bookedFilmIds: string[]; bookingDetails: Record<string, BookingDetails> } {
-  if (!Array.isArray(result) || result.length !== 2 || !Array.isArray(result[0]) || result[0].some((id) => !isFilmId(id)) || !Array.isArray(result[1]) || result[1].length % 2 !== 0) {
+interface BookingSyncResult {
+  bookedFilmIds: string[];
+  bookingDetails: Record<string, BookingDetails>;
+  sortOrder?: SortOrder;
+  settings?: UserSettings;
+}
+
+function parseBookingResult(result: unknown): BookingSyncResult {
+  if (!Array.isArray(result) || result.length !== 3 || !Array.isArray(result[0]) || result[0].some((id) => !isFilmId(id)) || !Array.isArray(result[1]) || result[1].length % 2 !== 0) {
     throw new BookingStoreError(
       "Booking storage returned invalid booking data.",
       502,
@@ -317,10 +382,20 @@ function parseBookingResult(result: unknown): { bookedFilmIds: string[]; booking
       throw new BookingStoreError("Booking storage returned invalid booking details.", 502);
     }
   }
-  return { bookedFilmIds, bookingDetails };
+  const rawSettings = result[2];
+  if (rawSettings === null || rawSettings === false) return { bookedFilmIds, bookingDetails };
+  let settings: unknown;
+  try {
+    settings = rawSettings === "release" || rawSettings === "booking"
+      ? { sortOrder: rawSettings } : JSON.parse(rawSettings);
+  } catch {
+    throw new BookingStoreError("Booking storage returned invalid settings.", 502);
+  }
+  if (!isUserSettings(settings)) throw new BookingStoreError("Booking storage returned invalid settings.", 502);
+  return { bookedFilmIds, bookingDetails, settings, ...(settings.sortOrder ? { sortOrder: settings.sortOrder } : {}) };
 }
 
-export async function syncBookings(value: unknown): Promise<{ bookedFilmIds: string[]; bookingDetails: Record<string, BookingDetails> }> {
+export async function syncBookings(value: unknown): Promise<BookingSyncResult> {
   const request = parseRequest(value);
   const keys = getVaultKeys(request.username, request.code);
   let result: unknown;
@@ -334,12 +409,18 @@ export async function syncBookings(value: unknown): Promise<{ bookedFilmIds: str
       String(filmIds.length),
       ...filmIds,
       JSON.stringify(request.bookingDetails),
+      JSON.stringify(request.settings),
     ]);
     if (request.action === "connect" && (result === null || result === false)) {
       throw new BookingStoreError(
         "No booking sync was found for that username and code. Check the code and try again.",
         404,
       );
+    }
+  } else if (request.action === "settings") {
+    result = await runRedisScript(setSettingsScript, keys, [JSON.stringify(request.settings)]);
+    if (result === null || result === false) {
+      throw new BookingStoreError("No booking sync was found for that username and code. Reconnect and try again.", 404);
     }
   } else if (request.action === "set") {
     result = await runRedisScript(setBookingScript, keys, [
@@ -366,6 +447,7 @@ export async function syncBookings(value: unknown): Promise<{ bookedFilmIds: str
     result = await runRedisScript(reconcileVaultScript, keys, [
       String(watchlistFilmIds.length),
       ...watchlistFilmIds,
+      JSON.stringify(request.settings),
     ]);
     if (result === null || result === false) {
       throw new BookingStoreError(

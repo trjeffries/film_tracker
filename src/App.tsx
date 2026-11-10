@@ -1,5 +1,7 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { wordlist } from "@scure/bip39/wordlists/english.js";
+import { compareFilms, type SortOrder } from "./filmSorting";
+import { isUserSettings, type UserSettings } from "./userSettings";
 
 interface Film {
   id: string;
@@ -34,10 +36,13 @@ type BookingDetails = Pick<Booking, "date" | "url">;
 type Filter = "all" | "upcoming" | "recent" | "booked";
 type Bookings = Record<string, Booking>;
 const usernameStorageKey = "watch-it-when:username";
+const sortOrderStorageKey = "watch-it-when:sort-order";
 
 interface BookingSyncResponse {
   bookedFilmIds: string[];
   bookingDetails: Record<string, BookingDetails>;
+  sortOrder?: SortOrder;
+  settings?: UserSettings;
 }
 
 function bookingDetails(bookings: Bookings): Record<string, BookingDetails> {
@@ -79,6 +84,8 @@ function isBookingSyncResponse(value: unknown): value is BookingSyncResponse {
     Array.isArray(value.bookedFilmIds) &&
     value.bookedFilmIds.every((id) => typeof id === "string") &&
     isRecord(value.bookingDetails) &&
+    (value.sortOrder === undefined || value.sortOrder === "release" || value.sortOrder === "booking") &&
+    (value.settings === undefined || isUserSettings(value.settings)) &&
     Object.values(value.bookingDetails).every((details) => isRecord(details) &&
       (details.date === undefined || typeof details.date === "string") &&
       (details.url === undefined || typeof details.url === "string"))
@@ -311,7 +318,7 @@ function formatSyncTime(value: string): string {
 function Icon({
   name,
 }: {
-  name: "ticket" | "refresh" | "search" | "film" | "arrow";
+  name: "ticket" | "refresh" | "search" | "film" | "arrow" | "copy";
 }) {
   const common = {
     fill: "none",
@@ -323,6 +330,14 @@ function Icon({
     "aria-hidden": true as const,
   };
 
+  if (name === "copy") {
+    return (
+      <svg {...common}>
+        <rect x="9" y="9" width="11" height="11" rx="2" />
+        <path d="M6 15H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1" />
+      </svg>
+    );
+  }
   if (name === "ticket") {
     return (
       <svg {...common}>
@@ -369,6 +384,14 @@ function App() {
   const [films, setFilms] = useState<Film[]>([]);
   const [bookings, setBookings] = useState<Bookings>({});
   const [filter, setFilter] = useState<Filter>("all");
+  const [sortOrder, setSortOrder] = useState<SortOrder>(() => {
+    try {
+      return localStorage.getItem(sortOrderStorageKey) === "booking" ? "booking" : "release";
+    } catch {
+      return "release";
+    }
+  });
+  const [settingsStorageError, setSettingsStorageError] = useState("");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -390,11 +413,65 @@ function App() {
   const [bookingDate, setBookingDate] = useState("");
   const [bookingUrl, setBookingUrl] = useState("");
   const [bookingDetailsPromptDisabled, setBookingDetailsPromptDisabled] = useState(false);
+  const [bookingPromptChoiceMade, setBookingPromptChoiceMade] = useState(false);
+  const [bookingPromptStorageError, setBookingPromptStorageError] = useState("");
   const [storageError, setStorageError] = useState("");
   const [fetchedAt, setFetchedAt] = useState("");
   const usernameInput = useRef<HTMLInputElement>(null);
   const bookingSyncDialog = useRef<HTMLDialogElement>(null);
   const bookingDetailsDialog = useRef<HTMLDialogElement>(null);
+  const settingsSyncQueue = useRef<Promise<void>>(Promise.resolve());
+
+  function currentSettings(): UserSettings {
+    return { sortOrder, bookingDetailsPromptDisabled, bookingPromptChoiceMade };
+  }
+
+  function applySyncedSettings(response: BookingSyncResponse) {
+    const settings = response.settings ?? { sortOrder: response.sortOrder };
+    if (settings.sortOrder !== undefined) setSortOrder(settings.sortOrder);
+    if (settings.bookingDetailsPromptDisabled !== undefined) {
+      setBookingDetailsPromptDisabled(settings.bookingDetailsPromptDisabled);
+      try {
+        localStorage.setItem(`watch-it-when:booking-details-prompt-disabled:${username.toLowerCase()}`, String(settings.bookingDetailsPromptDisabled));
+        setBookingPromptStorageError("");
+      } catch { setBookingPromptStorageError("Your booking prompt preference could not be saved on this device."); }
+    }
+    if (settings.bookingPromptChoiceMade) rememberBookingPromptChoice(false);
+  }
+
+  function syncSettings(settings: UserSettings) {
+    if (!username || !bookingSyncCode) return;
+    setBookingSyncError("");
+    setBookingSyncNotice("");
+    // Queue changes so a slower request cannot overwrite a newer preference.
+    settingsSyncQueue.current = settingsSyncQueue.current.then(async () => {
+      await requestBookingSync({
+        action: "settings",
+        username,
+        code: bookingSyncCode,
+        settings,
+      });
+      setBookingSyncNotice("Settings synced across devices.");
+    }).catch((cause: unknown) => {
+      setBookingSyncError(cause instanceof Error
+        ? `Settings changed on this device, but could not sync: ${cause.message}`
+        : "Settings could not sync. Please try changing the setting again.");
+    });
+  }
+
+  function changeSortOrder(nextSortOrder: SortOrder) {
+    setSortOrder(nextSortOrder);
+    syncSettings({ sortOrder: nextSortOrder });
+  }
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(sortOrderStorageKey, sortOrder);
+      setSettingsStorageError("");
+    } catch {
+      setSettingsStorageError("Your sort order could not be saved on this device.");
+    }
+  }, [sortOrder]);
 
   useEffect(() => {
     const dialog = bookingSyncDialog.current;
@@ -483,6 +560,7 @@ function App() {
       let savedSyncCode = "";
       let syncPromptDismissed = false;
       let detailsPromptDisabled = false;
+      let promptChoiceMade = false;
       try {
         const savedBookings = localStorage.getItem(getStorageKey(nextUsername));
         const parsed: unknown = savedBookings ? JSON.parse(savedBookings) : {};
@@ -490,6 +568,7 @@ function App() {
           throw new Error("Saved ticket status is not in the expected format.");
         }
         restoredBookings = parsed;
+        promptChoiceMade = Object.values(parsed).some((booking) => !!booking.date);
         setStorageError("");
       } catch (cause) {
         setStorageError(
@@ -506,6 +585,8 @@ function App() {
 
       try {
         detailsPromptDisabled = localStorage.getItem(`watch-it-when:booking-details-prompt-disabled:${nextUsername.toLowerCase()}`) === "true";
+        promptChoiceMade = promptChoiceMade || detailsPromptDisabled ||
+          localStorage.getItem(`watch-it-when:booking-prompt-choice-made:${nextUsername.toLowerCase()}`) === "true";
       } catch { /* Keep prompting if the preference cannot be read. */ }
 
       try {
@@ -542,13 +623,20 @@ function App() {
           );
         } else {
           try {
+            await settingsSyncQueue.current;
             const remoteBookings = await requestBookingSync({
               action: "reconcile",
               username: nextUsername,
               code: savedSyncCode,
               watchlistFilmIds: result.watchlistFilmIds,
+              settings: { sortOrder, bookingDetailsPromptDisabled: detailsPromptDisabled, bookingPromptChoiceMade: promptChoiceMade },
             });
             restoredBookings = bookingsFromSync(remoteBookings);
+            if (remoteBookings.sortOrder) setSortOrder(remoteBookings.sortOrder);
+            if (remoteBookings.settings?.bookingDetailsPromptDisabled !== undefined) {
+              detailsPromptDisabled = remoteBookings.settings.bookingDetailsPromptDisabled;
+            }
+            promptChoiceMade = promptChoiceMade || remoteBookings.settings?.bookingPromptChoiceMade === true;
             setBookingSyncError("");
           } catch (cause) {
             setBookingSyncOpen(true);
@@ -568,6 +656,17 @@ function App() {
         syncPromptDismissed || Boolean(savedSyncCode),
       );
       setBookingDetailsPromptDisabled(detailsPromptDisabled);
+      try {
+        localStorage.setItem(`watch-it-when:booking-details-prompt-disabled:${nextUsername.toLowerCase()}`, String(detailsPromptDisabled));
+      } catch { /* The synced preference remains active for this visit. */ }
+      const hasBookingPromptChoice = promptChoiceMade || Object.values(restoredBookings).some((booking) => !!booking.date);
+      setBookingPromptChoiceMade(hasBookingPromptChoice);
+      if (hasBookingPromptChoice) {
+        try {
+          localStorage.setItem(`watch-it-when:booking-prompt-choice-made:${nextUsername.toLowerCase()}`, "true");
+        } catch { /* Keep the first-use choice for this visit. */ }
+      }
+      setBookingPromptStorageError("");
       setUsername(nextUsername);
       setUsernameDraft(nextUsername);
       setFilms(result.films);
@@ -651,7 +750,9 @@ function App() {
         code,
         filmIds: bookedFilmIds(bookings),
         bookingDetails: bookingDetails(bookings),
+        settings: currentSettings(),
       });
+      applySyncedSettings(synced);
       setBookings(mergeBookings(bookings, synced));
       storeSyncCode(code);
       setBookingSyncOpen(true);
@@ -690,7 +791,9 @@ function App() {
         code,
         filmIds: bookedFilmIds(bookings),
         bookingDetails: bookingDetails(bookings),
+        settings: currentSettings(),
       });
+      applySyncedSettings(synced);
       setBookings(mergeBookings(bookings, synced));
       storeSyncCode(code);
       setBookingSyncCodeInput("");
@@ -803,6 +906,7 @@ function App() {
       [filmId]: { booked: true, updatedAt: new Date().toISOString(), ...clean },
     }));
     setBookingDetailsFilmId(null);
+    if (details.date) rememberBookingPromptChoice();
     syncBooking(filmId, true, clean);
   }
 
@@ -812,11 +916,28 @@ function App() {
     setBookingDetailsFilmId(null);
   }
 
-  function disableBookingDetailsPrompt() {
-    setBookingDetailsPromptDisabled(true);
+  function rememberBookingPromptChoice(sync = true) {
+    setBookingPromptChoiceMade(true);
     try {
-      localStorage.setItem(`watch-it-when:booking-details-prompt-disabled:${username.toLowerCase()}`, "true");
-    } catch { /* The preference remains active for this visit. */ }
+      localStorage.setItem(`watch-it-when:booking-prompt-choice-made:${username.toLowerCase()}`, "true");
+    } catch { /* Keep the first-use choice for this visit. */ }
+    if (sync) syncSettings({ bookingPromptChoiceMade: true });
+  }
+
+  function changeBookingDetailsPrompt(disabled: boolean) {
+    setBookingDetailsPromptDisabled(disabled);
+    rememberBookingPromptChoice(false);
+    syncSettings({ bookingDetailsPromptDisabled: disabled, bookingPromptChoiceMade: true });
+    try {
+      localStorage.setItem(`watch-it-when:booking-details-prompt-disabled:${username.toLowerCase()}`, String(disabled));
+      setBookingPromptStorageError("");
+    } catch {
+      setBookingPromptStorageError("Your booking prompt preference could not be saved on this device.");
+    }
+  }
+
+  function disableBookingDetailsPrompt() {
+    changeBookingDetailsPrompt(true);
     cancelBookingDetails();
   }
 
@@ -847,8 +968,8 @@ function App() {
         film.title.toLowerCase().includes(query) ||
         String(film.year ?? "").includes(query);
       return matchesFilter && matchesSearch;
-    });
-  }, [bookings, films, filter, search, today]);
+    }).sort((left, right) => compareFilms(left, right, sortOrder, bookings));
+  }, [bookings, films, filter, search, sortOrder, today]);
 
   return (
     <>
@@ -894,24 +1015,58 @@ function App() {
                       Close
                     </button>
                   </div>
-                  <h3 className="booking-sync-section-title">Sync bookings across devices</h3>
+                  <fieldset className="sort-order-setting" disabled={loading || bookingSyncBusy}>
+                    <legend>Sort order</legend>
+                    <label>
+                      <input type="radio" name="sort-order" value="release"
+                        checked={sortOrder === "release"}
+                        onChange={() => changeSortOrder("release")} />
+                      Release date
+                    </label>
+                    <label>
+                      <input type="radio" name="sort-order" value="booking"
+                        checked={sortOrder === "booking"}
+                        onChange={() => changeSortOrder("booking")} />
+                      Booking date, then release date
+                    </label>
+                    <p>Booked films first, ordered by screening date. Bookings without a date follow dated bookings.</p>
+                  </fieldset>
+                  {settingsStorageError && (
+                    <p className="booking-sync-error" role="alert">{settingsStorageError}</p>
+                  )}
+                  <fieldset className="sort-order-setting" disabled={loading || bookingSyncBusy}>
+                    <legend>Booking details</legend>
+                    <label>
+                      <input type="checkbox"
+                        checked={!bookingDetailsPromptDisabled}
+                        onChange={(event) => changeBookingDetailsPrompt(!event.target.checked)} />
+                      Ask for details when marking a film as booked
+                    </label>
+                  </fieldset>
+                  {bookingPromptStorageError && (
+                    <p className="booking-sync-error" role="alert">{bookingPromptStorageError}</p>
+                  )}
+                  <h3 className="booking-sync-section-title">Sync across devices</h3>
                   {bookingSyncCode ? (
                     <>
                       <p>
                         Use this private phrase or code with the Letterboxd
                         username <strong>{username}</strong> on another device.
-                        Anyone with both can access these bookings.
+                        Anyone with both can access these bookings and settings.
                       </p>
                       <div className="booking-sync-code">
                         <code>{bookingSyncCode}</code>
-                      </div>
-                      <div className="booking-sync-actions">
                         <button
+                          className="booking-sync-copy"
                           type="button"
+                          title="Copy sync code"
+                          aria-label="Copy sync code"
                           onClick={() => void copyBookingsSyncCode()}
                         >
-                          Copy sync key
+                          <Icon name="copy" />
                         </button>
+                      </div>
+                      <div className="booking-sync-actions">
                         <button
                           type="button"
                           onClick={() => setBookingSyncDeleteConfirm(true)}
@@ -954,7 +1109,7 @@ function App() {
                     <>
                       <p>
                         Create a private three-word phrase to sync your booked
-                        films with another device, or enter a phrase or code you
+                        films and sort order with another device, or enter a phrase or code you
                         already have. Existing bookings will be merged.
                       </p>
                       <button
@@ -1428,7 +1583,7 @@ function App() {
             <button type="button" onClick={cancelBookingDetails}>
               {bookingDetailsIsEdit ? "Cancel" : "Not now"}
             </button>
-            {!bookingDetailsIsEdit && (
+            {!bookingDetailsIsEdit && !bookingPromptChoiceMade && (
               <button type="button" onClick={disableBookingDetailsPrompt}>Don’t show again</button>
             )}
           </div>
