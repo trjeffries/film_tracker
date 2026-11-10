@@ -308,6 +308,12 @@ function cineworldSearchUrl(title: string, year: number | null): string {
   return `https://www.google.com/search?q=${encodeURIComponent(query)}`;
 }
 
+function digitalSearchUrl(film: Film, service: string): string {
+  const query = [film.title, film.year, service || "streaming", "watch UK"]
+    .filter(Boolean).join(" ");
+  return `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+}
+
 function formatSyncTime(value: string): string {
   return new Intl.DateTimeFormat("en-GB", {
     hour: "2-digit",
@@ -1355,6 +1361,10 @@ function App() {
               {visibleFilms.map((film, index) => {
                 const isDigitalOnly = film.releaseDates.length > 0 &&
                   film.releaseDates.every((release) => release.type === "digital");
+                const releasedDigitalServices = [...new Map(film.releaseDates
+                  .filter((release) => release.type === "digital" && release.market === "uk" && release.date <= today)
+                  .map((release) => [release.service?.toLowerCase() ?? "", release.service ?? ""]))
+                  .values()];
                 const booking = bookings[film.id]?.booked ?? false;
                 const bookedDate = bookings[film.id]?.date;
                 const bookingLabel = bookedDate
@@ -1473,6 +1483,22 @@ function App() {
                           </span>
                         )}
                       </p>
+                      {releasedDigitalServices.length > 0 && (
+                        <div className={`digital-actions${isDigitalOnly ? " is-digital-only" : ""}`}>
+                          {releasedDigitalServices.map((service) => (
+                            <a className="booking-button is-booked booking-confirmation-button"
+                              key={service.toLowerCase()}
+                              href={digitalSearchUrl(film, service)}
+                              target="_blank"
+                              rel="noreferrer"
+                              title={`Search for ${film.title}${service ? ` on ${service}` : " streaming"}`}
+                              aria-label={`Search for ${film.title}${service ? ` on ${service}` : " streaming"}`}>
+                              {service ? `Watch on ${service}` : "Watch online"}
+                              <Icon name="arrow" />
+                            </a>
+                          ))}
+                        </div>
+                      )}
                       {!isDigitalOnly && (
                         <div className="film-actions">
                           {!booking ? (

@@ -1116,6 +1116,18 @@ input:focus-visible {
   font-weight: 600;
 }
 
+.digital-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  border-top: 1px solid rgba(216, 225, 224, 0.09);
+  padding: 10px 0;
+}
+
+.digital-actions.is-digital-only {
+  margin-top: auto;
+}
+
 .film-actions {
   display: flex;
   min-height: 30px;
@@ -1471,7 +1483,7 @@ input:focus-visible {
     display: flex;
     min-width: 0;
     flex-direction: column;
-    justify-content: center;
+    justify-content: flex-start;
     padding: 12px 12px 0;
   }
 
@@ -1493,6 +1505,10 @@ input:focus-visible {
 
   .film-actions {
     margin-top: auto;
+    padding: 8px 0;
+  }
+
+  .digital-actions {
     padding: 8px 0;
   }
 
